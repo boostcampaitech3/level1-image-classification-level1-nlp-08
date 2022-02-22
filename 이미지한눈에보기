@@ -1,0 +1,50 @@
+from sklearn.model_selection import StratifiedShuffleSplit
+from torch.utils.data import Dataset
+from torch.utils.data import DataLoader
+from torch.utils.data import Subset
+from torchvision import transforms
+from PIL import Image
+
+import matplotlib.pyplot as plt
+import matplotlib.image as img
+import pandas as pd
+import numpy as np
+import os
+
+
+train_data_root = '/opt/ml/input/data/train/train.csv'
+train_image_root= '/opt/ml/input/data/train/images'
+
+plt.rcParams['figure.figsize'] = [30, 900]
+
+train_data = pd.read_csv(train_data_root)
+
+drop_features=['race']
+train_data=train_data.drop(columns=drop_features)
+
+df = pd.DataFrame(columns=['path','mask','gender','age'])
+
+rows=540
+columns=7
+image_index=1
+
+##range에 본인 범위 넣으시고 run시킨다음 확인하시면 됩니당
+##시간은 좀걸려요~
+for i in range(1082,1623): 
+    name=train_data['path'][i]
+    titles=name.split('_')
+    file_list = os.listdir(train_image_root+'/'+name)
+    file_list.sort()
+    for file in file_list:
+        if 'mask' in file or 'normal' in file:
+            if '._'not in file:
+                image=Image.open(train_image_root+'/'+name+'/'+file)
+                plt.subplot(rows, columns, image_index)
+                plt.title(f'{titles[0]}  {titles[1]} {titles[3]} {file}')
+                plt.xticks([])
+                plt.yticks([])
+                plt.imshow(image)
+                image_index+=1
+                
+plt.show()
+############################
