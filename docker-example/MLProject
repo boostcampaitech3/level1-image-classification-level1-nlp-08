@@ -1,5 +1,0 @@
-name: baseline
-
-entry_points:
-  main:
-    command: "python baseline.py"
