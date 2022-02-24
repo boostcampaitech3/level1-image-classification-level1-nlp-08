@@ -1,3 +1,8 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[215]:
+
 
 from sklearn.model_selection import StratifiedShuffleSplit
 from torch.utils.data import Dataset
@@ -12,146 +17,137 @@ import numpy as np
 import os
 
 
-def labelling(name):
-  label = 0
-  info, mask_type = name.split('/')[-2:]
-  info = info.split('_')
-  gender, age = info[1], int(info[3])
-  if 'incorrect' in mask_type:
-    label += 6
-  elif 'normal' in mask_type:
-    label += 12
-  
-  if gender == 'female':
-    label += 3
-  
-  if 27 <= age < 57:
-    label += 1
-  elif age >= 58:
-    label += 2
-  
-  return label
+# In[261]:
 
 
-train_data_root = '/opt/ml/input/data/train/train.csv'
-train_image_root= '/opt/ml/input/data/train/images'
-
-
-train_data = pd.read_csv(train_data_root)
-
-drop_features=['race']
-train_data=train_data.drop(columns=drop_features)
-
-df = pd.DataFrame(columns=['path','mask','gender','age'])
-
-###########################
-for i in range(2700):
-    name=train_data['path'][i]
-    titles=name.split('_')
-    file_list = os.listdir(train_image_root+'/'+name)
-    for file in file_list:
-        if 'mask' in file or 'normal' in file:
-            if '._' in file:
-                continue
-            if 'incorrect' in file:
-                a=pd.DataFrame(data=[[name+'/'+file,'Incorrect',titles[1],titles[3]]], columns=['path','mask','gender','age'])
-            elif 'normal' in file:
-                a=pd.DataFrame(data=[[name+'/'+file,'Not wear',titles[1],titles[3]]], columns=['path','mask','gender','age'])
-            else:
-                a=pd.DataFrame(data=[[name+'/'+file,'Wear',titles[1],titles[3]]], columns=['path','mask','gender','age'])
-
-            df=df.append(a)
-############################
-        
-display(df)
-
-
+#dir= '/opt/ml/input/data/train/images'
+#dataset = MaskDataset(dir,transforms.ToTensor())
 
 class MaskDataset(Dataset):
-    def __init__(self,df,transform,target):
-        self.df = df
-        self.transform=transform
+    def __init__(self,dir,transform,X=np.array(range(2700)),target=None):
+        self.dir=dir
         self.target=target
-        self.classes = df.columns
+        self.transform=transform
+        self.X=X
+        self.df=self.get_df()
+        self.classes = self.df.columns
         
+        
+    def get_df(self):
+        all_files=[]
+        folders=os.listdir(self.dir)
+        folders.sort()
+        folders.reverse()
+        for i in self.X:
+            if folders[i].startswith('.'):
+                continue
+            id, gender, race, age =folders[i].split('_')
+
+            img_dir=os.path.join(self.dir,folders[i])
+            
+            for imgname in os.listdir(img_dir):
+                if imgname.startswith('.'):
+                    continue
+                path=os.path.join(img_dir,imgname)
+                mask_label,gender_label,age_label,total_label = self.labeling(imgname,gender,age)
+                all_files.append([path,mask_label,gender_label,age_label,total_label])
+                
+        df=pd.DataFrame(np.array(all_files),columns=['path','mask','gender','age','label'])
+        return df
+    
+    def labeling(self,imgname,gender,age):
+        mask_label = 0
+        gender_label =0
+        age_label=0
+        age=int(age)
+        
+        if 'incorrect' in imgname:
+            mask_label += 6
+        elif 'normal' in imgname:
+            mask_label += 12
+            
+        if gender == 'female':
+            gender_label += 3
+        if 27 <= age < 57:
+            age_label += 1
+        elif age >= 58:
+            age_label += 2
+        total_label=mask_label+gender_label+age_label
+        
+        return mask_label,gender_label,age_label,total_label
+    
     def __getitem__(self,idx):
-        image = Image.open(train_image_root+'/'+self.df['path'].iloc[idx])
+        image = Image.open(self.df['path'].iloc[idx])
         image = self.transform(image)
-        label = self.df[self.target].iloc[idx]
-        if self.target == 'age': 
-            ###########################
-            label=int(label)
-            if 0<= label < 30 :
-                label='<30'
-            elif 30<= label < 60 :
-                label='30<= and <60'
-            else :
-                label='60<'
-            ###########################  
-        
+        if self.target is not None:
+            label= self.df[self.target].iloc[idx]
+        else:          
+            label = self.df['label'].iloc[idx]
         return image, label
     
     def __len__(self):
         return len(self.df)
 
-    
-    
-class EvalDataset(Dataset):
-    def __init__(self,df,transform):
-        self.df=df
+#################################
+
+class ValDataset(Dataset):
+    def __init__(self,img_dir,transform,y=np.array(range(2700))):
+        self.dir=img_dir
         self.transform=transform
+        self.y=y
+        self.df=self.get_df()
+        self.classes = self.df.columns
         
-    def __get_item__(self,idx):
-        image = Image.open(train_image_root+'/'+self.df['path'].iloc[idx])
+        
+    def get_df(self):
+        all_files=[]
+        folders=os.listdir(self.dir)
+        folders.sort()
+        folders.reverse()
+        for i in self.y:
+            if folders[i].startswith('.'):
+                continue
+
+            img_dir=os.path.join(self.dir,folders[i])
+            
+            for imgname in os.listdir(img_dir):
+                if imgname.startswith('.'):
+                    continue
+                path=os.path.join(img_dir,imgname)
+                all_files.append(path)
+                
+        df=pd.DataFrame(np.array(all_files),columns=['path'])
+        return df
+    
+    
+    def __getitem__(self,idx):
+        image = Image.open(self.df['path'].iloc[idx])
         image = self.transform(image)
-        return image
+        return image, label
     
     def __len__(self):
         return len(self.df)
     
 
+#################################
 
-
-dataset = MaskDataset(df,transforms.ToTensor(),'mask')
-len(dataset)
-
-
-
-
-sss = StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=0)
-indices = range(len(dataset))
-
-val = [y for _, y in dataset]
-
-
-
-(train_index, val_index), = sss.split(indices, val)
+class TestDataset(Dataset):
+    def __init__(self,img_dir,transform,target=None):
+        self.img_dir=img_dir
+        self.images=os.listdir(os.path.join(self.img_dir))
+        self.transform=transform
+        
+    def __get_item__(self,idx):
+        image = Image.open(self.img_dir+'/'+self.images[idx])
+        image = self.transform(image)
+        return image
     
-train_dataset = Subset(dataset, train_index)
-val_dataset = Subset(dataset, val_index)
+    def __len__(self):
+        return len(self.images)
+    
 
 
-len(train_dataset)
-
-
-
-dataloader_train_mask = DataLoader(dataset=train_dataset,
-                                    batch_size=5,
-                                    shuffle=True,
-                                    num_workers=1,
-                                   )
-dataloader_val_mask = DataLoader(dataset=val_dataset,
-                                    batch_size=5,
-                                    shuffle=True,
-                                    num_workers=1,
-                                   )
-
-
-next(iter(dataloader_train_mask))
-
-
-next(iter(dataloader_val_mask))
-
+# In[ ]:
 
 
 
