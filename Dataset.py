@@ -12,6 +12,26 @@ import numpy as np
 import os
 
 
+def labelling(name):
+  label = 0
+  info, mask_type = name.split('/')[-2:]
+  info = info.split('_')
+  gender, age = info[1], int(info[3])
+  if 'incorrect' in mask_type:
+    label += 6
+  elif 'normal' in mask_type:
+    label += 12
+  
+  if gender == 'female':
+    label += 3
+  
+  if 27 <= age < 57:
+    label += 1
+  elif age >= 58:
+    label += 2
+  
+  return label
+
 
 train_data_root = '/opt/ml/input/data/train/train.csv'
 train_image_root= '/opt/ml/input/data/train/images'
