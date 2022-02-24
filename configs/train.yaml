@@ -1,0 +1,43 @@
+targets:
+  - "age"
+  - "gender"
+  - "mask"
+
+trainer:
+  train_csv_path: "/opt/ml/input/data/train/train.csv"
+  train_img_path: "/opt/ml/input/data/train/images/"
+  weight_save_path: "save/"
+  seed: 42
+
+ensemble_default: &ensemble_default
+  model: "efficientnet-b0"
+
+  fold:
+    n_splits: 5
+    age_bins: [0, 29, 59, 100]
+
+  transform:
+    crop_size: 350
+    cutout_size: 100
+
+  sampler_size: 0.25
+
+  dataloader:
+    batch_size: 64
+    num_workers: 2
+
+  optimizer:
+    name: "Adam"
+    parameters:
+      lr: 0.00006
+
+  criterion:
+    name: "LabelSmoothing"
+    parameters:
+      smoothing: 0.05
+
+  train:
+    max_epoch: 40
+    patience: 10
+
+  weight_save_dir_prefix: ensemble_
