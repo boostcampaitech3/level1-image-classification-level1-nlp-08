@@ -26,8 +26,8 @@ if __name__ == "__main__":
     
     
     for target in config_train['targets']:
-        model, weight_paths = trainer.train_ensemble(target, config_train[f'ensemble_{target}'])
-        df_pseudo = predicter.get_pseudo_label(target, weight_paths, config_infer[f'pseudo_labeling_{target}'], model=model)
-        model, weight_paths = trainer.train_ensemble(target, config_train[f'ensemble_with_pseudo_{target}'], df_pseudo=df_pseudo)
+        base_model, weight_paths = trainer.train(target, config_train[f'train_{target}'])
+        df_pseudo = predicter.get_pseudo_label(target, weight_paths, config_infer[f'pseudo_labeling_{target}'], model=base_model)
+        model, weight_paths = trainer.train(target, config_train[f'train_with_pseudo_{target}'], df_pseudo=df_pseudo)
     
     print('Model train Complete')

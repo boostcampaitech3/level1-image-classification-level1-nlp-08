@@ -1,9 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[215]:
-
-
 from sklearn.model_selection import StratifiedShuffleSplit
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader

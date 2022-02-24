@@ -1,0 +1,3 @@
+predicter:
+  eval_info_path: "/opt/ml/input/data/eval/info.csv"
+  eval_img_path: "/opt/ml/input/data/eval/images/"
