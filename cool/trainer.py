@@ -12,14 +12,11 @@ import torch.optim as optim
 from sklearn.metrics import f1_score
 from torch.utils.data import DataLoader
 
-#from cool.transform import get_transform
 from cool.seed import seed_everything
 from cool.dataset import MaskDataset, ValDataset, TestDataset
 from cool.split_by_kfold import Kfold
-#from cool.utils import get_weighted_sampler
 
 
-from importlib import import_module
 from cool.transform import train_transform
 from cool.transform import eval_transform
 from cool import models
@@ -27,13 +24,13 @@ from cool import loss
 
 class Trainer:
     
-  def __init__(self, train_csv_path, train_img_path, save_param_path, seed):
+  def __init__(self, train_csv_path, train_img_path, weight_save_path, seed):
       
     self.train_csv_path = train_csv_path
     self.train_img_path = train_img_path
-    self.save_param_path = save_param_path
+    self.weight_save_path = weight_save_path
       
-    os.makedirs(save_param_path, exist_ok=True)
+    os.makedirs(weight_save_path, exist_ok=True)
     self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
     self.seed = seed
   
@@ -41,7 +38,7 @@ class Trainer:
   # train_base는 train에 들어갈 것을 미리 구현해놓은 상태
   # target에 따라 예측하는 것이 변경될 수 있도록 설정
   
-  def train_base(self, loader, model, optimizer, criterion, fold, epochs, max_limit, sub_dir, file_name):
+  def train_base(self, loader, model, optimizer, criterion, sub_dir, file_name, fold, epochs, max_limit):
     '''
     loader : dataloader
     model : configs.train.yaml -> train_base
@@ -53,7 +50,7 @@ class Trainer:
     '''
 
     
-    save_dir = os.path.join(self.save_param_path, sub_dir)
+    save_dir = os.path.join(self.weight_save_path, sub_dir)
     # save_param/sub_dir/file_name.pt
     # 여기서 sub_dir은 각 target별 폴더가 달라지게 된다. ex) train_base_age / train_base_gender
     # file_name은 fold{몇번째 폴드인지 숫자}.pt
@@ -84,6 +81,7 @@ class Trainer:
       
         for inputs, labels in tqdm(loader[mode]):
           inputs = inputs.to(self.device)
+          labels = torch.LongTensor(list(map(int, labels)))
           labels = labels.to(self.device)
         
           with torch.set_grad_enabled(mode == 'train'): 
@@ -110,7 +108,7 @@ class Trainer:
           sub_epoch_acc = running_corrects.double() / running_cnt
           sub_f1 = f1_score(y_true, y_pred, average='macro')
         
-          print('{} mode에서 sub_epoch {} 에서의 acc : {:.4f}, loss : {:.3f}, f1-score : {:.4f}'.format(mode, sub_epoch, sub_epoch_acc, sub_epoch_loss, sub_f1))
+        print('{} mode에서 sub_epoch {} 에서의 acc : {:.4f}, loss : {:.3f}, f1-score : {:.4f}'.format(mode, sub_epoch, sub_epoch_acc, sub_epoch_loss, sub_f1))
 
         if mode == 'valid':
           if sub_f1 > best_score:
@@ -136,13 +134,14 @@ class Trainer:
   
   
   
-  def train(self, target, config, scheduler, pseudo_data=None):
+  #def train(self, target, config, scheduler, pseudo_data=None):
+  def train(self, target, config, pseudo_data=None):
         #target = 'label' or 'gender', 'age','mask'
         #kfold안에 들어갈 n_split 설정 필요
         
         print(f'\n{target} train을 시작합니다.')
 
-        folds = Kfold.folds(5)
+        folds = Kfold(5).folds
 
         for fold, (train_idx, val_idx) in enumerate(folds, start = 1):
             seed_everything(self.seed)
@@ -154,23 +153,21 @@ class Trainer:
             resize_input = 224 # train.yaml에 define
             # 우리의 모델에 들어가는 input size는 기존 pre-trained 모델의 input size을 기반으로 한다.
             
-            transform_train = get_transform(augment=True,resize=resize_input, **config['transform'])
-            transform_valid = get_transform(augment=False, resize=resize_input, **config['transform'])
+            transform_train = train_transform(**config['transform'])
+            transform_valid = eval_transform(resize=resize_input)
             # 그것에 맞추어 사이즈 교체
             
             train_dataset = MaskDataset(dir=self.train_img_path, transform=transform_train, X=train_idx,target=target)
-            valid_dataset = ValDataset(dir=self.train_img_path, transform=transform_valid, y=val_idx,target=target)
+            valid_dataset = MaskDataset(dir=self.train_img_path, transform=transform_valid, X=val_idx, target=target)
 
             
-            #sampler = get_weighted_sampler(label=df_train[target], ratio=config['sampler_size'])
-
             ## 여기 수정해야 한다.
             
             dataloaders = {'train' : DataLoader(train_dataset, **config['dataloader']),
                            'valid' : DataLoader(valid_dataset, drop_last=False, shuffle=False, **config['dataloader'])}
             
   
-            model_module = getattr(import_module('models'), **config['model'])
+            model_module = getattr(models, config['model'])
             model = model_module(num_classes=2 if target=='gender' else 3)
             model.to(self.device)
             
@@ -179,7 +176,6 @@ class Trainer:
             # criterion
             # loss 부분도 수정해주어야 한다.
             config_criterion = config['criterion']
-            #criterion = getattr(ensemble_loss, config_criterion['name'])(**config_criterion['parameters'])
             criterion = getattr(loss, config_criterion['name'])(**config_criterion['parameters'])
             
 
@@ -190,8 +186,7 @@ class Trainer:
 
 
             # train
-            self.train_base(model= model, loader = dataloaders, criterion= criterion, optimizer= optimizer, 
-                            sub_dir=f"{config['prefix_for_weight']}{target}", file_name=f'fold{fold}', **config['train'])
+            self.train_base(loader = dataloaders, model= model, optimizer= optimizer, criterion= criterion,
+                            sub_dir=f"{config['prefix_for_weight']}{target}", file_name=f'fold{fold}', fold=fold, **config['train'])
 
-        return model, [os.path.join(self.save_param_path, f'{config["prefix_for_weight"]}{target}', f'fold{fold}.pt') for fold in range(1,len(folds)+1)]
-  
+        return model, [os.path.join(self.weight_save_path, f'{config["prefix_for_weight"]}{target}', f'fold{fold}.pt') for fold in range(1,len(folds)+1)]

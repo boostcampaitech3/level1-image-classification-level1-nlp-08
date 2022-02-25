@@ -1,16 +1,10 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[25]:
-
-
 import os
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import StratifiedKFold
-
-
-# In[26]:
 
 
 class Kfold:
@@ -35,7 +29,7 @@ class Kfold:
         for folder in folders:
             if folder.startswith('.'):
                 continue
-            id, gender, race, age =folder.split('_')
+            id, gender, _, age =folder.split('_')
             all.append([folder,self.labeling(gender,age)])
         df=pd.DataFrame(np.array(all),columns=['path','label'])
         return df
@@ -51,7 +45,7 @@ class Kfold:
             age_label += 1
         elif age >= 58:
             age_label += 2
-        total_label=[gender_label,age_label]
+        total_label=gender_label*100 + age_label
         
         return total_label  
             
@@ -60,10 +54,3 @@ class Kfold:
         return self.folds[idx]
     def __len__(self):
         return len(folds)
-
-
-# In[ ]:
-
-
-
-

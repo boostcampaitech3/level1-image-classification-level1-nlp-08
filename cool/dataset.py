@@ -82,8 +82,8 @@ class MaskDataset(Dataset):
 #################################
 
 class ValDataset(Dataset):
-    def __init__(self, img_dir, transform, y=np.array(range(2700))):
-        self.dir = img_dir
+    def __init__(self, dir, transform, y=np.array(range(2700))):
+        self.dir = dir
         self.transform = transform
         self.y = y
         self.df = self.get_df()

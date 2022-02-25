@@ -6,7 +6,7 @@ targets:
 trainer:
   train_csv_path: "/opt/ml/input/data/train/train.csv"
   train_img_path: "/opt/ml/input/data/train/images/"
-  save_param_path: "/opt/ml/save_param/"
+  weight_save_path: "save_param/"
   seed: 42
 
 train_base: &train_base
@@ -17,8 +17,11 @@ train_base: &train_base
     age_bins: [0, 26, 57, 100]
 
   transform:
-    crop_size: 350
-    cutout_size: 100
+    # crop_size: 350
+    # cutout_size: 100
+    n: 2
+    magnitude: 9
+    resize: 224
 
   sampler_size: 0.25
 
@@ -35,11 +38,13 @@ train_base: &train_base
     #name: "LabelSmoothing"
     name: "FCLSLoss"
     parameters:
+      classes: 3
       smoothing: 0.05
+      gamma: 0.0
 
   train:
-    max_epoch: 40
-    limit: 10
+    epochs: 40
+    max_limit: 10
 
   prefix_for_weight: train_base_
 
@@ -67,7 +72,7 @@ train_with_pseudo_base: &train_with_pseudo_base
 
   criterion:
     #name: "LabelSmoothing"
-    name: "FCLS"
+    name: "FCLSLoss"
     parameters:
       classes: 3
       smoothing: 0.05
