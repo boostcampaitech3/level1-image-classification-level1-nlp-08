@@ -1,3 +1,43 @@
 predicter:
   eval_info_path: "/opt/ml/input/data/eval/info.csv"
   eval_img_path: "/opt/ml/input/data/eval/images/"
+  weight_save_path: "save_param/"
+
+predict:
+  model: 'efficientnet-b0'
+  weights:
+    age: [save/pseudo_age/fold1.pt, save/pseudo_age/fold2.pt]
+    gender: [save/pseudo_gender/fold1.pt, save/pseudo_gender/fold2.pt, save/pseudo_gender/fold3.pt]
+    mask: [save/pseudo_mask/fold1.pt, save/pseudo_mask/fold2.pt, save/pseudo_mask/fold3.p]
+
+  transform:
+    n : 3
+    magnitude : 10
+
+  dataloader:
+    batch_size: 64
+    num_workers: 2
+
+
+pseudo_labeling_default: &pseudo_labeling_default
+
+  model: 'efficientnet-b0'
+
+  transform:
+    crop_size: 350
+
+  dataloader:
+    batch_size: 64
+    num_workers: 2
+  
+pseudo_labeling_gender:
+  <<: *pseudo_labeling_default
+  threshold: [0.9, 0.9]
+
+pseudo_labeling_age:
+  <<: *pseudo_labeling_default
+  threshold: [0.8, 0.8, 0.8]
+
+pseudo_labeling_mask:
+  <<: *pseudo_labeling_default
+  threshold: [0.5, 0.95, 0.95]
