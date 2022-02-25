@@ -1,4 +1,4 @@
-import augmentation.RandAugment
+from cool import augmentation
 from torchvision import transforms
 
 class train_transform():
@@ -18,7 +18,7 @@ class train_transform():
 class eval_transform():
     def __init__(self, resize):
         self.transform = transforms.Compose([
-            transforms.Resize(resize)
+            transforms.Resize(resize),
             transforms.ToTensor(),
             transforms.Normalize(mean = [0.485, 0.456, 0.406], std = [0.229, 0.224, 0.225])
         ])
