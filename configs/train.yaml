@@ -40,7 +40,7 @@ train_base: &train_base
     max_epoch: 40
     limit: 10
 
-  weight_save_dir_prefix: train_base_
+  prefix_for_weight: train_base_
 
 train_with_pseudo_base: &train_with_pseudo_base
   model: "efficientnet-b0"
