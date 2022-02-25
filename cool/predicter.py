@@ -45,7 +45,7 @@ class Predicter:
                     prob_batch = []
                     model.load_state_dict(torch.load(weight_path))
 
-                    for inputs in tqdm(dataloader):
+                    for inputs in dataloader:
                         inputs = inputs.to(self.device)
                         outputs = model(inputs)
                         
@@ -88,7 +88,7 @@ class Predicter:
         transform_eval = eval_transform(resize = resize)
 
         # dataset
-        eval_dataset = TestDataset(img_dir = "/opt/ml/input/data/eval/images/", transform=transform_eval)
+        eval_dataset = TestDataset(img_dir = "/opt/ml/input/data/eval/images", transform=transform_eval)
 
         # dataloader
         dataloader = DataLoader(eval_dataset, drop_last=False, shuffle=False, **config['dataloader'])
