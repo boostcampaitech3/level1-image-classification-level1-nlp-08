@@ -14,14 +14,14 @@ from torch.utils.data import DataLoader
 
 #from cool.transform import get_transform
 from cool.seed import seed_everything
-from cool.Dataset import MaskDataset, ValDataset
+from cool.dataset import MaskDataset, ValDataset, TestDataset
 from cool.split_by_kfold import Kfold
 #from cool.utils import get_weighted_sampler
+
 
 from importlib import import_module
 from cool.transform import train_transform
 from cool.transform import eval_transform
-from cool.Dataset import MaskDataset
 from cool import models
 from cool import loss
 
@@ -137,12 +137,14 @@ class Trainer:
   
   
   def train(self, target, config, scheduler, pseudo_data=None):
-
+        #target = 'label' or 'gender', 'age','mask'
+        #kfold안에 들어갈 n_split 설정 필요
+        
         print(f'\n{target} train을 시작합니다.')
 
-        folds = fold(train_csv_path = self.train_csv_path, train_img_path = self.train_img_path, random_state=self.seed , **config['fold'])
+        folds = Kfold.folds(5)
 
-        for fold, (df_train, df_valid) in enumerate(customfold.folds, start = 1):
+        for fold, (train_idx, val_idx) in enumerate(folds, start = 1):
             seed_everything(self.seed)
             
             if pseudo_data is not None:
@@ -156,15 +158,15 @@ class Trainer:
             transform_valid = get_transform(augment=False, resize=resize_input, **config['transform'])
             # 그것에 맞추어 사이즈 교체
             
-            train_dataset = MaskDataset(df=df_train, transform=transform_train, target=target)
-            valid_dataset = ValDataset(df=df_valid, transform=transform_valid, target=target)
+            train_dataset = MaskDataset(dir=self.train_img_path, transform=transform_train, X=train_idx,target=target)
+            valid_dataset = ValDataset(dir=self.train_img_path, transform=transform_valid, y=val_idx,target=target)
 
             
             #sampler = get_weighted_sampler(label=df_train[target], ratio=config['sampler_size'])
 
             ## 여기 수정해야 한다.
             
-            dataloaders = {'train' : DataLoader(train_dataset, sampler=sampler, **config['dataloader']),
+            dataloaders = {'train' : DataLoader(train_dataset, **config['dataloader']),
                            'valid' : DataLoader(valid_dataset, drop_last=False, shuffle=False, **config['dataloader'])}
             
   
