@@ -5,15 +5,13 @@ import torch.nn.functional as F
 
 
 class FCLSLoss(nn.Module):    #Focal + Labelsmoothing
-    def __init__(self, classes=3, smoothing=0.0,gamma=0, weight=None, reduction ='mean', dim=-1):
+    def __init__(self, classes=3, smoothing=0.0,gamma=0, dim=-1):
         super(FCLSLoss, self).__init__()
         self.confidence = 1.0 - smoothing
         self.smoothing = smoothing
         self.cls = classes
         self.dim = dim
         self.gamma = gamma
-        self.weight= weight
-        self.reduction = reduction
 
     def forward(self, input_tensor, target):
         log_prob = input_tensor.log_softmax(dim=self.dim)
@@ -92,6 +90,7 @@ class F1Loss(nn.Module):
 
 
 _criterion_entrypoints = {
+    'FCLS': FCLSLoss,
     'cross_entropy': nn.CrossEntropyLoss,
     'focal': FocalLoss,
     'label_smoothing': LabelSmoothingLoss,

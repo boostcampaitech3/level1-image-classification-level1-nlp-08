@@ -67,9 +67,11 @@ train_with_pseudo_base: &train_with_pseudo_base
 
   criterion:
     #name: "LabelSmoothing"
-    name: "FCLSLoss"
+    name: "FCLS"
     parameters:
+      classes: 3
       smoothing: 0.05
+      gamma: 0.0
 
   train:
     max_epoch: 40
