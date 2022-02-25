@@ -6,7 +6,7 @@ targets:
 trainer:
   train_csv_path: "/opt/ml/input/data/train/train.csv"
   train_img_path: "/opt/ml/input/data/train/images/"
-  weight_save_path: "save_param/"
+  save_param_path: "/opt/ml/save_param/"
   seed: 42
 
 train_base: &train_base

@@ -6,9 +6,9 @@ predicter:
 predict:
   model: 'efficientnet-b0'
   weights:
-    age: [save/pseudo_age/fold1.pt, save/pseudo_age/fold2.pt]
-    gender: [save/pseudo_gender/fold1.pt, save/pseudo_gender/fold2.pt, save/pseudo_gender/fold3.pt]
-    mask: [save/pseudo_mask/fold1.pt, save/pseudo_mask/fold2.pt, save/pseudo_mask/fold3.p]
+    age: [save_param/train_base_age/fold1.pt]
+    gender: [save_param/train_base_gender/fold1.pt]
+    mask: [save_param/train_base_mask/fold1.pt]
 
   transform:
     n : 3
