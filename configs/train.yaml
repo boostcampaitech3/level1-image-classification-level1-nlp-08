@@ -32,7 +32,8 @@ train_base: &train_base
       lr: 0.00006
 
   criterion:
-    name: "LabelSmoothing"
+    #name: "LabelSmoothing"
+    name: "FCLSLoss"
     parameters:
       smoothing: 0.05
 
@@ -65,7 +66,8 @@ train_with_pseudo_base: &train_with_pseudo_base
       lr: 0.00006
 
   criterion:
-    name: "LabelSmoothing"
+    #name: "LabelSmoothing"
+    name: "FCLSLoss"
     parameters:
       smoothing: 0.05
 
