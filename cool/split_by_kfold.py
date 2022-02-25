@@ -51,7 +51,7 @@ class Kfold:
             age_label += 1
         elif age >= 58:
             age_label += 2
-        total_label=gender_label+age_label
+        total_label=[gender_label,age_label]
         
         return total_label  
             
