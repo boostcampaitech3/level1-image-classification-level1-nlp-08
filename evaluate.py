@@ -12,7 +12,7 @@ if __name__ == '__main__':
     with open(args.config_pred) as f:
         config_pred = yaml.load(f, Loader = yaml.FullLoader)
 
-    predicter = predicter(**config_pred['predicter'])
-    Predicter.predict(config_pred['predict'])
+    predicter = Predicter(**config_pred['predicter'])
+    predicter.predict(config_pred['predict'])
 
-    print('Evaluation Complete!')
+    print('예측 및 submission csv 생성 완료')

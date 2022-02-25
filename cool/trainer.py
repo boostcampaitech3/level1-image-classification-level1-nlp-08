@@ -27,7 +27,7 @@ from cool import loss
 
 class Trainer:
     
-  def __init__(self, train_csv_path, train_img_path, weight_save_path, seed):
+  def __init__(self, train_csv_path, train_img_path, save_param_path, seed):
       
     self.train_csv_path = train_csv_path
     self.train_img_path = train_img_path
@@ -193,5 +193,5 @@ class Trainer:
             self.train_base(model= model, loader = dataloaders, criterion= criterion, optimizer= optimizer, 
                             sub_dir=f"{config['prefix_for_weight']}{target}", file_name=f'fold{fold}', **config['train'])
 
-        return model, [os.path.join(self.weight_save_path, f'{config["prefix_for_weight"]}{target}', f'fold{fold}.pt') for fold in range(1,len(folds)+1)]
+        return model, [os.path.join(self.save_param_path, f'{config["prefix_for_weight"]}{target}', f'fold{fold}.pt') for fold in range(1,len(folds)+1)]
   

@@ -11,16 +11,13 @@ import torch.nn as nn
 import torch.optim as optim
 from sklearn.metrics import f1_score
 from torch.utils.data import DataLoader
-from efficientnet_pytorch import EfficientNet
 
 
 from cool.transform import eval_transform
-import cool.models
-#from cool.seed import seed_everything
-from cool.dataset import MaskTrainDataset
-#from cool.fold import customfold
-#from cool.utils import get_weighted_sampler
-import cool.loss
+from cool import models
+from cool.dataset import TestDataset
+from cool import loss
+
 
 class Predicter(self):
     def __init__(self, eval_csv_path, eval_img_path):
@@ -28,7 +25,6 @@ class Predicter(self):
         self.eval_csv_path = eval_csv_path
         self.eval_img_path = eval_img_path
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        #self.seed = seed
 
         self.df_eval = pd.read_csv(self.eval_csv_path)
 
@@ -45,15 +41,17 @@ class Predicter(self):
                 model.to(self.device)
                 model.eval()
                 
-                prob_batch = []
-                model.load_state_dict(torch.load(weight_path))
+                for weight_path in weights[target]:
+                    prob_batch = []
+                    model.load_state_dict(torch.load(weight_path))
 
-                for inputs in tdqum(dataloader):
-                    inputs = inputs.to(self.device)
-                    outputs = model(inputs)
-                    df_eval[target] = ouputs.argmax(axis = -1)
+                    for inputs in tdqum(dataloader):
+                        inputs = inputs.to(self.device)
+                        outputs = model(inputs)
+                        
+                        self.df_eval[target] = self.ouputs.argmax(axis = -1)
 
-        df_submit = self.calc_target(df_eval)
+        df_submit = self.calc_target(self.df_eval)
         df_submit.to_csv('output.csv', index=False)
 
                 # probs = []
@@ -83,14 +81,14 @@ class Predicter(self):
         return df[['ImageID', 'ans']]
     
     def get_dataloader(self, config):
-        df_eval['path'] = df_eval['ImageID'].apply(lambda x: os.path.join(self.eval_img_path, x))
+        self.df_eval['path'] = self.df_eval['ImageID'].apply(lambda x: os.path.join(self.eval_img_path, x))
         
         # transform
         resize = 224
         transform_eval = eval_transform(resize = resize, **config['transform'])
 
         # dataset
-        eval_dataset = MaskEvalDataset(df=df_eval, transform=transform_eval)
+        eval_dataset = TestDataset(dir = "/opt/ml/input/data/eval/images/", transform=transform_eval)
 
         # dataloader
         dataloader = DataLoader(eval_dataset, drop_last=False, shuffle=False, **config['dataloader'])
