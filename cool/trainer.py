@@ -16,9 +16,9 @@ from torch.utils.data import DataLoader
 
 #from cool.transform import get_transform
 from cool.seed import seed_everything
-#from cool.dataset import MaskTrainDataset
-from cool.fold import customfold
-from cool.utils import get_weighted_sampler
+from cool.Dataset import MaskDataset, ValDataset
+from cool.split_by_kfold import Kfold
+#from cool.utils import get_weighted_sampler
 import cool.loss as ensemble_loss
 
 
@@ -35,7 +35,7 @@ class Trainer:
       
     self.train_csv_path = train_csv_path
     self.train_img_path = train_img_path
-    self.weight_save_path = weight_save_path
+    self.save_param_path = save_param_path
       
     os.makedirs(save_param_path, exist_ok=True)
     self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -45,7 +45,7 @@ class Trainer:
   # train_base는 train에 들어갈 것을 미리 구현해놓은 상태
   # target에 따라 예측하는 것이 변경될 수 있도록 설정
   
-  def train_base(self, loader, model, optimizer, criterion, fold, epochs, max_limit, sub_dir):
+  def train_base(self, loader, model, optimizer, criterion, fold, epochs, max_limit, sub_dir, file_name):
     '''
     loader : dataloader
     model : configs.train.yaml -> train_base
@@ -55,7 +55,15 @@ class Trainer:
     max_limits : For Early Stopping
     sub_dir : Saved weight
     '''
+
+    
     save_dir = os.path.join(self.save_param_path, sub_dir)
+    # save_param/sub_dir/file_name.pt
+    # 여기서 sub_dir은 각 target별 폴더가 달라지게 된다. ex) train_base_age / train_base_gender
+    # file_name은 fold{몇번째 폴드인지 숫자}.pt
+    # 그렇다면 각 fold마다의 validation 성적을 구한다.
+    # epoch이 지속됨에 따라, 이전 epoch과 비교해 성적이 높아졌으면 저장을 하게 된다.
+    
     os.makedirs(save_dir, exist_ok=True)
         
     best_score = 0
@@ -113,7 +121,7 @@ class Trainer:
             best_score = sub_f1
             best_epoch = sub_epoch
             limit = 0
-            torch.save(model.state_dict(), os.path.join(save_dir, 'best.pt'))
+            torch.save(model.state_dict(), os.path.join(save_dir, f'{file_name}.pt'))
           
           elif limit == max_limit:
             print('\n훈련종료\n')
@@ -153,12 +161,13 @@ class Trainer:
             transform_valid = get_transform(augment=False, resize=resize_input, **config['transform'])
             # 그것에 맞추어 사이즈 교체
             
-            train_dataset = MaskTrainDataset(df=df_train, transform=transform_train, target=target)
-            valid_dataset = MaskTrainDataset(df=df_valid, transform=transform_valid, target=target)
+            train_dataset = MaskDataset(df=df_train, transform=transform_train, target=target)
+            valid_dataset = ValDataset(df=df_valid, transform=transform_valid, target=target)
 
             
-            sampler = get_weighted_sampler(label=df_train[target], ratio=config['sampler_size'])
+            #sampler = get_weighted_sampler(label=df_train[target], ratio=config['sampler_size'])
 
+            ## 여기 수정해야 한다.
             
             dataloaders = {'train' : DataLoader(train_dataset, sampler=sampler, **config['dataloader']),
                            'valid' : DataLoader(valid_dataset, drop_last=False, shuffle=False, **config['dataloader'])}
@@ -172,6 +181,7 @@ class Trainer:
             
             
             # criterion
+            # loss 부분도 수정해주어야 한다.
             config_criterion = config['criterion']
             #criterion = getattr(ensemble_loss, config_criterion['name'])(**config_criterion['parameters'])
             criterion = getattr(loss, config_criterion['name'])(**config_criterion['parameters'])
@@ -185,6 +195,7 @@ class Trainer:
 
             # train
             self.train_base(model= model, loader = dataloaders, criterion= criterion, optimizer= optimizer, 
-                       sub_dir=f"{config['weight_save_dir_prefix']}{target}", save_name=f'fold{fold}', **config['train'])
+                            sub_dir=f"{config['prefix_for_weight']}{target}", file_name=f'fold{fold}', **config['train'])
 
-        return model, [os.path.join(self.weight_save_path, f'{config["weight_save_dir_prefix"]}{target}', f'fold{fold}.pt') for fold in range(1,len(folds)+1)]
+        return model, [os.path.join(self.weight_save_path, f'{config["prefix_for_weight"]}{target}', f'fold{fold}.pt') for fold in range(1,len(folds)+1)]
+  
