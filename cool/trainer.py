@@ -11,20 +11,16 @@ import torch.nn as nn
 import torch.optim as optim
 from sklearn.metrics import f1_score
 from torch.utils.data import DataLoader
-#from efficientnet_pytorch import EfficientNet
-
 
 #from cool.transform import get_transform
 from cool.seed import seed_everything
 from cool.Dataset import MaskDataset, ValDataset
 from cool.split_by_kfold import Kfold
 #from cool.utils import get_weighted_sampler
-import cool.loss as ensemble_loss
-
 
 from importlib import import_module
-from cool.transform import get_train_transform
-from cool.transform import get_eval_transform
+from cool.transform import train_transform
+from cool.transform import eval_transform
 from cool.Dataset import MaskDataset
 from cool import models
 from cool import loss
@@ -152,8 +148,7 @@ class Trainer:
             if pseudo_data is not None:
                 df_train = pd.concat([pseudo_data, df_train])
 
-            
-            #resize_input = EfficientNet.get_image_size(config['model'])
+
             resize_input = 224 # train.yaml에 define
             # 우리의 모델에 들어가는 input size는 기존 pre-trained 모델의 input size을 기반으로 한다.
             
@@ -173,7 +168,6 @@ class Trainer:
                            'valid' : DataLoader(valid_dataset, drop_last=False, shuffle=False, **config['dataloader'])}
             
   
-            #model = get_model(target=target)
             model_module = getattr(import_module('models'), **config['model'])
             model = model_module(num_classes=2 if target=='gender' else 3)
             model.to(self.device)
