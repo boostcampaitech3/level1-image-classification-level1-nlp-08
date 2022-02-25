@@ -1,7 +1,6 @@
 predicter:
-  eval_info_path: "/opt/ml/input/data/eval/info.csv"
+  eval_csv_path: "/opt/ml/input/data/eval/info.csv"
   eval_img_path: "/opt/ml/input/data/eval/images/"
-  weight_save_path: "save_param/"
 
 predict:
   model: 'efficientnet-b0'

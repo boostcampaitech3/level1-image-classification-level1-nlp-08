@@ -19,7 +19,7 @@ from cool.dataset import TestDataset
 from cool import loss
 
 
-class Predicter(self):
+class Predicter:
     def __init__(self, eval_csv_path, eval_img_path):
       
         self.eval_csv_path = eval_csv_path
