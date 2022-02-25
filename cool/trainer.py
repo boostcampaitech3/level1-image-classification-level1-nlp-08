@@ -11,23 +11,31 @@ import torch.nn as nn
 import torch.optim as optim
 from sklearn.metrics import f1_score
 from torch.utils.data import DataLoader
-from efficientnet_pytorch import EfficientNet
+#from efficientnet_pytorch import EfficientNet
 
 
-from cool.transform import get_transform
+#from cool.transform import get_transform
 from cool.seed import seed_everything
-from cool.dataset import MaskTrainDataset
+#from cool.dataset import MaskTrainDataset
 from cool.fold import customfold
 from cool.utils import get_weighted_sampler
 import cool.loss as ensemble_loss
 
+
+from importlib import import_module
+from cool.transform import get_train_transform
+from cool.transform import get_eval_transform
+from cool.Dataset import MaskDataset
+from cool import models
+from cool import loss
+
 class Trainer:
     
-  def __init__(self, train_csv_path, train_img_path, save_param_path, seed):
+  def __init__(self, train_csv_path, train_img_path, weight_save_path, seed):
       
     self.train_csv_path = train_csv_path
     self.train_img_path = train_img_path
-    self.weight_save_path = save_param_path
+    self.weight_save_path = weight_save_path
       
     os.makedirs(save_param_path, exist_ok=True)
     self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -38,7 +46,15 @@ class Trainer:
   # target에 따라 예측하는 것이 변경될 수 있도록 설정
   
   def train_base(self, loader, model, optimizer, criterion, fold, epochs, max_limit, sub_dir):
-    
+    '''
+    loader : dataloader
+    model : configs.train.yaml -> train_base
+    optimizer : config['optimizer']
+    criterion : config['criterion']
+    fold : StratifiedKFold
+    max_limits : For Early Stopping
+    sub_dir : Saved weight
+    '''
     save_dir = os.path.join(self.save_param_path, sub_dir)
     os.makedirs(save_dir, exist_ok=True)
         
@@ -129,7 +145,8 @@ class Trainer:
                 df_train = pd.concat([pseudo_data, df_train])
 
             
-            resize_input = EfficientNet.get_image_size(config['model'])
+            #resize_input = EfficientNet.get_image_size(config['model'])
+            resize_input = 224 # train.yaml에 define
             # 우리의 모델에 들어가는 input size는 기존 pre-trained 모델의 input size을 기반으로 한다.
             
             transform_train = get_transform(augment=True,resize=resize_input, **config['transform'])
@@ -147,41 +164,27 @@ class Trainer:
                            'valid' : DataLoader(valid_dataset, drop_last=False, shuffle=False, **config['dataloader'])}
             
   
-            model = get_model(target=target)
+            #model = get_model(target=target)
+            model_module = getattr(import_module('models'), **config['model'])
+            model = model_module(num_classes=2 if target=='gender' else 3)
             model.to(self.device)
             
             
             
             # criterion
             config_criterion = config['criterion']
-            criterion = getattr(ensemble_loss, config_criterion['name'])(**config_criterion['parameters']) 
+            #criterion = getattr(ensemble_loss, config_criterion['name'])(**config_criterion['parameters'])
+            criterion = getattr(loss, config_criterion['name'])(**config_criterion['parameters'])
             
 
             # optimizer
-            config_criterion = config['optimizer']
-            optimizer = getattr(optim, config_criterion['name'])(model.parameters(), **config_criterion['parameters'])
+            config_optimizer = config['optimizer']
+            optimizer = getattr(optim, config_optimizer['name'])(model.parameters(), **config_optimizer['parameters'])
 
 
 
             # train
-            self.train(model= model, loader = dataloaders, criterion= criterion, optimizer= optimizer, 
+            self.train_base(model= model, loader = dataloaders, criterion= criterion, optimizer= optimizer, 
                        sub_dir=f"{config['weight_save_dir_prefix']}{target}", save_name=f'fold{fold}', **config['train'])
 
         return model, [os.path.join(self.weight_save_path, f'{config["weight_save_dir_prefix"]}{target}', f'fold{fold}.pt') for fold in range(1,len(folds)+1)]
-  
-  
-
-
-
-  
-def get_model(model_name='efficientnet-b0', target='mask'):
-    model = EfficientNet.from_pretrained(model_name)
-    
-    for param in model.parameters():
-        param.requires_grad = False
-
-    del model._fc
-    # # # use the same head as the baseline notebook.
-    model._fc = nn.Linear(1280, num_classes=2 if target=='gender' else 3)
-    
-    return model

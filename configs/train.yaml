@@ -10,7 +10,7 @@ trainer:
   seed: 42
 
 train_base: &train_base
-  model: "efficientnet-b0"
+  model: "efficientnet"
 
   fold:
     n_splits: 5
@@ -43,7 +43,7 @@ train_base: &train_base
   weight_save_dir_prefix: train_base_
 
 train_with_pseudo_base: &train_with_pseudo_base
-  model: "efficientnet-b0"
+  model: "efficientnet"
 
   fold:
     n_splits: 3

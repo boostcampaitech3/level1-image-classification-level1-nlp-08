@@ -10,7 +10,7 @@ if __name__ == "__main__":
     parser.add_argument('--config_train', type=str, 
                         help='path to train yaml')
     parser.add_argument('--config_infer', type=str, 
-                        help='path oto inference yaml') 
+                        help='path to inference yaml') 
     
     args = parser.parse_args()
 

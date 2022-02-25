@@ -5,55 +5,52 @@ from torch.utils.data import Subset
 from torchvision import transforms
 from PIL import Image
 
-
 import pandas as pd
 import numpy as np
 import os
-
-
-# In[261]:
 
 
 #dir= '/opt/ml/input/data/train/images'
 #dataset = MaskDataset(dir,transforms.ToTensor())
 
 class MaskDataset(Dataset):
-    def __init__(self,dir,transform,X=np.array(range(2700)),target=None):
-        self.dir=dir
-        self.target=target
-        self.transform=transform
-        self.X=X
-        self.df=self.get_df()
+    def __init__(self, dir, transform, X=np.array(range(2700)), target=None):
+        self.dir = dir
+        self.target = target
+        self.transform = transform
+        self.X = X
+        self.df = self.get_df()
         self.classes = self.df.columns
         
         
     def get_df(self):
-        all_files=[]
-        folders=os.listdir(self.dir)
+        all_files = []
+        folders = os.listdir(self.dir)
         folders.sort()
         folders.reverse()
         for i in self.X:
             if folders[i].startswith('.'):
                 continue
-            id, gender, race, age =folders[i].split('_')
+            #id, gender, race, age =folders[i].split('_')
+            id, gender, _, age =folders[i].split('_')
 
-            img_dir=os.path.join(self.dir,folders[i])
+            img_dir = os.path.join(self.dir,folders[i])
             
             for imgname in os.listdir(img_dir):
                 if imgname.startswith('.'):
                     continue
-                path=os.path.join(img_dir,imgname)
-                mask_label,gender_label,age_label,total_label = self.labeling(imgname,gender,age)
-                all_files.append([path,mask_label,gender_label,age_label,total_label])
+                path = os.path.join(img_dir,imgname)
+                mask_label, gender_label, age_label, total_label = self.labeling(imgname, gender, age)
+                all_files.append([path, mask_label, gender_label, age_label, total_label])
                 
-        df=pd.DataFrame(np.array(all_files),columns=['path','mask','gender','age','label'])
+        df=pd.DataFrame(np.array(all_files), columns = ['path', 'mask', 'gender', 'age', 'label'])
         return df
     
-    def labeling(self,imgname,gender,age):
+    def labeling(self, imgname, gender, age):
         mask_label = 0
-        gender_label =0
-        age_label=0
-        age=int(age)
+        gender_label = 0
+        age_label = 0
+        age = int(age)
         
         if 'incorrect' in imgname:
             mask_label += 6
@@ -66,15 +63,15 @@ class MaskDataset(Dataset):
             age_label += 1
         elif age >= 58:
             age_label += 2
-        total_label=mask_label+gender_label+age_label
+        total_label = mask_label + gender_label + age_label
         
-        return mask_label,gender_label,age_label,total_label
+        return mask_label, gender_label, age_label, total_label
     
-    def __getitem__(self,idx):
+    def __getitem__(self, idx):
         image = Image.open(self.df['path'].iloc[idx])
         image = self.transform(image)
         if self.target is not None:
-            label= self.df[self.target].iloc[idx]
+            label = self.df[self.target].iloc[idx]
         else:          
             label = self.df['label'].iloc[idx]
         return image, label
@@ -85,32 +82,32 @@ class MaskDataset(Dataset):
 #################################
 
 class ValDataset(Dataset):
-    def __init__(self,img_dir,transform,y=np.array(range(2700))):
-        self.dir=img_dir
-        self.transform=transform
-        self.y=y
-        self.df=self.get_df()
+    def __init__(self, img_dir, transform, y=np.array(range(2700))):
+        self.dir = img_dir
+        self.transform = transform
+        self.y = y
+        self.df = self.get_df()
         self.classes = self.df.columns
         
         
     def get_df(self):
-        all_files=[]
-        folders=os.listdir(self.dir)
+        all_files = []
+        folders = os.listdir(self.dir)
         folders.sort()
         folders.reverse()
         for i in self.y:
             if folders[i].startswith('.'):
                 continue
 
-            img_dir=os.path.join(self.dir,folders[i])
+            img_dir = os.path.join(self.dir, folders[i])
             
             for imgname in os.listdir(img_dir):
                 if imgname.startswith('.'):
                     continue
-                path=os.path.join(img_dir,imgname)
+                path = os.path.join(img_dir, imgname)
                 all_files.append(path)
                 
-        df=pd.DataFrame(np.array(all_files),columns=['path'])
+        df = pd.DataFrame(np.array(all_files),columns = ['path'])
         return df
     
     
@@ -126,23 +123,15 @@ class ValDataset(Dataset):
 #################################
 
 class TestDataset(Dataset):
-    def __init__(self,img_dir,transform,target=None):
-        self.img_dir=img_dir
-        self.images=os.listdir(os.path.join(self.img_dir))
-        self.transform=transform
+    def __init__(self, img_dir, transform, target=None):
+        self.img_dir = img_dir
+        self.images = os.listdir(os.path.join(self.img_dir))
+        self.transform = transform
         
     def __get_item__(self,idx):
-        image = Image.open(self.img_dir+'/'+self.images[idx])
+        image = Image.open(self.img_dir + '/' + self.images[idx])
         image = self.transform(image)
         return image
     
     def __len__(self):
         return len(self.images)
-    
-
-
-# In[ ]:
-
-
-
-
