@@ -12,6 +12,8 @@ import torch.optim as optim
 from sklearn.metrics import f1_score
 from torch.utils.data import DataLoader
 
+import torch.nn.functional as F
+
 
 from cool.transform import eval_transform
 from cool import models
@@ -41,15 +43,25 @@ class Predicter:
                 model.to(self.device)
                 model.eval()
                 
+                probs = []
                 for weight_path in weights[target]:
-                    prob_batch = []
+                    prob = []
+                    
                     model.load_state_dict(torch.load(weight_path))
 
-                    for inputs in dataloader:
+                    for inputs in tqdm(dataloader):
                         inputs = inputs.to(self.device)
                         outputs = model(inputs)
-                        
-                        self.df_eval[target] = self.ouputs.argmax(axis = -1)
+                        prob_batch =F.softmax(outputs, dim=-1)
+                        prob.append(prob_batch.cpu().numpy())
+                    
+                    
+                    probs.append(np.concatenate(prob, axis=0))
+                
+                ensembled_prob = np.mean(probs, axis=0)
+                soft_vote = ensembled_prob.argmax(axis=-1)
+
+                self.df_eval[target] = soft_vote
 
         df_submit = self.calc_target(self.df_eval)
         df_submit.to_csv('output.csv', index=False)

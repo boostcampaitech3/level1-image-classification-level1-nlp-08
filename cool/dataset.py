@@ -124,12 +124,17 @@ class ValDataset(Dataset):
 #################################
 
 class TestDataset(Dataset):
-    def __init__(self, img_dir, transform):
+    def __init__(self, img_dir, transform, target=None):
         self.img_dir = img_dir
-        self.images = os.listdir(os.path.join(self.img_dir))
+        self.path = os.listdir(os.path.join(self.img_dir))
+        self.images =[]
+        for img in self.path:
+            if not img.startswith('.'):
+                self.images.append(img)
+        
         self.transform = transform
         
-    def __get_item__(self,idx):
+    def __getitem__(self,idx):
         image = Image.open(self.img_dir + '/' + self.images[idx])
         image = self.transform(image)
         return image
