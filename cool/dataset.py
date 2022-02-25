@@ -124,7 +124,7 @@ class ValDataset(Dataset):
 #################################
 
 class TestDataset(Dataset):
-    def __init__(self, img_dir, transform, target=None):
+    def __init__(self, img_dir, transform):
         self.img_dir = img_dir
         self.images = os.listdir(os.path.join(self.img_dir))
         self.transform = transform

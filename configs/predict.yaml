@@ -3,15 +3,12 @@ predicter:
   eval_img_path: "/opt/ml/input/data/eval/images/"
 
 predict:
-  model: 'efficientnet-b0'
+  model: 'efficientnet'
   weights:
     age: [save_param/train_base_age/fold1.pt]
     gender: [save_param/train_base_gender/fold1.pt]
     mask: [save_param/train_base_mask/fold1.pt]
 
-  transform:
-    n : 3
-    magnitude : 10
 
   dataloader:
     batch_size: 64

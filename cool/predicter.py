@@ -29,14 +29,14 @@ class Predicter:
         self.df_eval = pd.read_csv(self.eval_csv_path)
 
     def predict(self, config):
-        dataloader = self.get_dataloader(self, config)
+        dataloader = self.get_dataloader(config)
         weights = config['weights']
 
         with torch.no_grad():
             for target in weights:
                 
                 #geattr에 importmodule 활용시 에러 발생한다고 함
-                model_module = getattr(models, **config['model'])
+                model_module = getattr(models, config['model'])
                 model = model_module(num_classes=2 if target=='gender' else 3)
                 model.to(self.device)
                 model.eval()
@@ -45,7 +45,7 @@ class Predicter:
                     prob_batch = []
                     model.load_state_dict(torch.load(weight_path))
 
-                    for inputs in tdqum(dataloader):
+                    for inputs in tqdm(dataloader):
                         inputs = inputs.to(self.device)
                         outputs = model(inputs)
                         
@@ -85,10 +85,10 @@ class Predicter:
         
         # transform
         resize = 224
-        transform_eval = eval_transform(resize = resize, **config['transform'])
+        transform_eval = eval_transform(resize = resize)
 
         # dataset
-        eval_dataset = TestDataset(dir = "/opt/ml/input/data/eval/images/", transform=transform_eval)
+        eval_dataset = TestDataset(img_dir = "/opt/ml/input/data/eval/images/", transform=transform_eval)
 
         # dataloader
         dataloader = DataLoader(eval_dataset, drop_last=False, shuffle=False, **config['dataloader'])
