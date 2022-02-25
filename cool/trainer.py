@@ -42,7 +42,7 @@ class Trainer:
   # train_base는 train에 들어갈 것을 미리 구현해놓은 상태
   # target에 따라 예측하는 것이 변경될 수 있도록 설정
   
-  def train_base(self, loader, model, optimizer, criterion, sub_dir, file_name, sub_epoch, max_limit):
+  def train_base(self, loader, model, optimizer, criterion, sub_dir, file_name, sub_epoch, max_limit, fold):
     '''
     loader : dataloader
     model : configs.train.yaml -> train_base
@@ -106,7 +106,7 @@ class Trainer:
         sub_epoch_acc = running_corrects.double() / running_cnt
         sub_f1 = f1_score(y_true, y_pred, average='macro')
         
-      print('{} mode에서 sub_epoch {} 에서의 acc : {:.4f}, loss : {:.3f}, f1-score : {:.4f}'.format(mode, sub_epoch, sub_epoch_acc, sub_epoch_loss, sub_f1))
+      print('{} mode에서 sub_epoch {} 에서 {} fold에서 acc : {:.4f}, loss : {:.3f}, f1-score : {:.4f}'.format(mode, sub_epoch, fold, sub_epoch_acc, sub_epoch_loss, sub_f1))
 
       if mode == 'valid':
         if sub_f1 > self.best_score:
@@ -121,7 +121,7 @@ class Trainer:
             
           return
 
-          self.limit += 1
+        self.limit += 1
 
 
     
@@ -146,7 +146,7 @@ class Trainer:
       self.best_score = 0
       self.best_epoch = 0
 
-      folds = Kfold(5).folds
+      folds = Kfold(2).folds
 
       for fold, (train_idx, val_idx) in enumerate(folds, start = 1):
         seed_everything(self.seed)
@@ -192,7 +192,7 @@ class Trainer:
 
         # train
         self.train_base(loader = dataloaders, model= model, optimizer= optimizer, criterion= criterion,
-                            sub_dir=f"{config['prefix_for_weight']}{target}", file_name=f'fold{fold}', sub_epoch=sub_epoch, max_limit=max_limit)
+                        sub_dir=f"{config['prefix_for_weight']}{target}", file_name=f'fold{fold}', sub_epoch=sub_epoch, max_limit=max_limit, fold = fold)
     
     print('\n훈련종료\n')
     print('validation set best f1 score는 epoch {}에서의 {:.4f}입니다.\n'.format(self.best_epoch, self.best_score))

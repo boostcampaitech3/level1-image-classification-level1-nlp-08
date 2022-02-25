@@ -26,7 +26,7 @@ if __name__ == "__main__":
     
     
     for target in config_train['targets']:
-        base_model, best_weight_paths = trainer.train(target, config_train[f'train_{target}'], )
+        base_model, best_weight_paths = trainer.train(target, config_train[f'train_{target}'])
         # df_pseudo = predicter.get_pseudo_label(target, best_weight_paths, config_infer[f'pseudo_labeling_{target}'], model=base_model)
         # model, best_weight_paths = trainer.train(target, config_train[f'train_with_pseudo_{target}'], df_pseudo=df_pseudo)
     

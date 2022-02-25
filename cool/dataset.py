@@ -53,17 +53,18 @@ class MaskDataset(Dataset):
         age = int(age)
         
         if 'incorrect' in imgname:
-            mask_label += 6
+            mask_label += 1
         elif 'normal' in imgname:
-            mask_label += 12
+            mask_label += 2
             
         if gender == 'female':
-            gender_label += 3
+            gender_label += 1
         if 27 <= age < 57:
             age_label += 1
         elif age >= 58:
             age_label += 2
-        total_label = mask_label + gender_label + age_label
+
+        total_label = mask_label*6 + gender_label*3 + age_label
         
         return mask_label, gender_label, age_label, total_label
     
