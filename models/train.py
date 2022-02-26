@@ -216,6 +216,12 @@ def train(data_dir, model_dir, args):
                 figure = None
                 for val_batch in val_loader:
                     inputs, labels = val_batch
+                    if target == "gender":
+                        labels = (labels//3)%2
+                    elif target == "mask":
+                        labels = (labels//6)%3
+                    else:
+                        labels = labels%3
                     inputs = inputs.to(device)
                     labels = labels.to(device)
 
