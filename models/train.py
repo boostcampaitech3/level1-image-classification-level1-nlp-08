@@ -7,6 +7,7 @@ import random
 import re
 from importlib import import_module
 from pathlib import Path
+import tqdm
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -86,154 +87,169 @@ def train(data_dir, model_dir, args):
     seed_everything(args.seed)
 
     save_dir = increment_path(os.path.join(model_dir, args.name))
+    
+    target_list = ["mask", "gender", "age"]
 
     # -- settings
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
 
-    # -- dataset
-    dataset_module = getattr(import_module("dataset"), args.dataset)  # default: MaskBaseDataset
-    dataset = dataset_module(
-        data_dir=data_dir,
-    )
-    num_classes = dataset.num_classes  # 18
+    for target in target_list:
 
-    # -- augmentation
-    transform_module = getattr(import_module("dataset"), args.augmentation)  # default: TrainTransform
-    transform = transform_module(
-        resize=args.resize,
-        n = 2,
-        magnitude = 9
-    )
-    dataset.set_transform(transform)
+        print(f"\n{target} 예측을 시작합니다.")
 
-    # -- data_loader
-    train_set, val_set = dataset.split_dataset()
+        num_classes = 2 if target == "gender" else 3
+        
+        # -- dataset
+        dataset_module = getattr(import_module("dataset"), args.dataset)  # default: MaskBaseDataset
+        dataset = dataset_module(
+                data_dir=data_dir
+                )
+        # target을 넘겨줘서 label과 num_classes가 변화하도록 구현해야 한다.                
 
-    train_loader = DataLoader(
-        train_set,
-        batch_size=args.batch_size,
-        num_workers=multiprocessing.cpu_count()//2,
-        shuffle=True,
-        pin_memory=use_cuda,
-        drop_last=True,
-    )
+        # -- augmentation
+        transform_module = getattr(import_module("dataset"), args.augmentation)  # default: BaseAugmentation
+        transform = transform_module(
+            resize=args.resize,
+            n = 2,
+            magnitude = 9
+        )
+        dataset.set_transform(transform)
 
-    val_loader = DataLoader(
-        val_set,
-        batch_size=args.valid_batch_size,
-        num_workers=multiprocessing.cpu_count()//2,
-        shuffle=False,
-        pin_memory=use_cuda,
-        drop_last=True,
-    )
+        # -- data_loader
+        train_set, val_set = dataset.split_dataset()
+        
 
-    # -- model
-    model_module = getattr(import_module("model"), args.model)  # default: BaseModel
-    model = model_module(
-        num_classes=num_classes
-    ).to(device)
-    model = torch.nn.DataParallel(model)
+        train_loader = DataLoader(
+            train_set,
+            batch_size=args.batch_size,
+            num_workers=multiprocessing.cpu_count()//2,
+            shuffle=True,
+            pin_memory=use_cuda,
+            drop_last=True,
+        )
 
-    # -- loss & metric
-    criterion = create_criterion(args.criterion)  # default: cross_entropy
-    opt_module = getattr(import_module("torch.optim"), args.optimizer)  # default: SGD
-    optimizer = opt_module(
-        filter(lambda p: p.requires_grad, model.parameters()),
-        lr=args.lr,
-        weight_decay=5e-4
-    )
-    scheduler = StepLR(optimizer, args.lr_decay_step, gamma=0.5)
+        val_loader = DataLoader(
+            val_set,
+            batch_size=args.valid_batch_size,
+            num_workers=multiprocessing.cpu_count()//2,
+            shuffle=False,
+            pin_memory=use_cuda,
+            drop_last=True,
+        )
 
-    # -- logging
-    logger = SummaryWriter(log_dir=save_dir)
-    with open(os.path.join(save_dir, 'config.json'), 'w', encoding='utf-8') as f:
-        json.dump(vars(args), f, ensure_ascii=False, indent=4)
+        # -- model
+        model_module = getattr(import_module("model"), args.model)  # default: BaseModel
+        model = model_module(
+            num_classes=num_classes
+        ).to(device)
+        model = torch.nn.DataParallel(model)
+
+        # -- loss & metric
+        criterion = create_criterion(args.criterion)  # default: cross_entropy
+        opt_module = getattr(import_module("torch.optim"), args.optimizer)  # default: SGD
+        optimizer = opt_module(
+            filter(lambda p: p.requires_grad, model.parameters()),
+            lr=args.lr,
+            weight_decay=5e-4
+        )
+        scheduler = StepLR(optimizer, args.lr_decay_step, gamma=0.5)
+
+        # -- logging
+        logger = SummaryWriter(log_dir=save_dir)
+        with open(os.path.join(save_dir, 'config.json'), 'w', encoding='utf-8') as f:
+            json.dump(vars(args), f, ensure_ascii=False, indent=4)
 
 #=====================================================================
 # Training 시작
-    best_val_acc = 0
-    best_val_loss = np.inf
-    for epoch in range(args.epochs):
-        # train loop
-        model.train()
-        loss_value = 0
-        matches = 0
-        for idx, train_batch in enumerate(train_loader):
-            inputs, labels = train_batch
-            inputs = inputs.to(device)
-            labels = labels.to(device)
-
-            optimizer.zero_grad()
-
-            outs = model(inputs)
-            preds = torch.argmax(outs, dim=-1)
-            loss = criterion(outs, labels)
-
-            loss.backward()
-            optimizer.step()
-
-            loss_value += loss.item()
-            matches += (preds == labels).sum().item()
-            if (idx + 1) % args.log_interval == 0:
-                train_loss = loss_value / args.log_interval
-                train_acc = matches / args.batch_size / args.log_interval
-                current_lr = get_lr(optimizer)
-                print(
-                    f"Epoch[{epoch}/{args.epochs}]({idx + 1}/{len(train_loader)}) || "
-                    f"training loss {train_loss:4.4} || training accuracy {train_acc:4.2%} || lr {current_lr}"
-                )
-                logger.add_scalar("Train/loss", train_loss, epoch * len(train_loader) + idx)
-                logger.add_scalar("Train/accuracy", train_acc, epoch * len(train_loader) + idx)
-
-                loss_value = 0
-                matches = 0
-
-        scheduler.step()    # LR Scheduler Update
-
-        # val loop   Validation 시작
-        with torch.no_grad():
-            print("Calculating validation results...")
-            model.eval()
-            val_loss_items = []
-            val_acc_items = []
-            figure = None
-            for val_batch in val_loader:
-                inputs, labels = val_batch
+        best_val_acc = 0
+        best_val_loss = np.inf
+        for epoch in range(args.epochs):
+            # train loop
+            model.train()
+            loss_value = 0
+            matches = 0
+            for idx, train_batch in enumerate(train_loader):
+                inputs, labels = train_batch
+                if target == "gender":
+                    labels = (labels//3)%2
+                elif target == "mask":
+                    labels = (labels//6)%3
+                else:
+                    labels = labels%3
                 inputs = inputs.to(device)
                 labels = labels.to(device)
 
+                optimizer.zero_grad()
+
                 outs = model(inputs)
                 preds = torch.argmax(outs, dim=-1)
+                loss = criterion(outs, labels)
 
-                loss_item = criterion(outs, labels).item()
-                acc_item = (labels == preds).sum().item()
-                val_loss_items.append(loss_item)
-                val_acc_items.append(acc_item)
+                loss.backward()
+                optimizer.step()
 
-                if figure is None:
-                    inputs_np = torch.clone(inputs).detach().cpu().permute(0, 2, 3, 1).numpy()
-                    inputs_np = dataset_module.denormalize_image(inputs_np, dataset.mean, dataset.std)
-                    figure = grid_image(
-                        inputs_np, labels, preds, n=16, shuffle=args.dataset != "MaskSplitByProfileDataset"
+                loss_value += loss.item()
+                matches += (preds == labels).sum().item()
+                if (idx + 1) % args.log_interval == 0:
+                    train_loss = loss_value / args.log_interval
+                    train_acc = matches / args.batch_size / args.log_interval
+                    current_lr = get_lr(optimizer)
+                    print(
+                        f"Epoch[{epoch}/{args.epochs}]({idx + 1}/{len(train_loader)}) || "
+                        f"training loss {train_loss:4.4} || training accuracy {train_acc:4.2%} || lr {current_lr}"
                     )
+                    logger.add_scalar("Train/loss", train_loss, epoch * len(train_loader) + idx)
+                    logger.add_scalar("Train/accuracy", train_acc, epoch * len(train_loader) + idx)
 
-            val_loss = np.sum(val_loss_items) / len(val_loader)
-            val_acc = np.sum(val_acc_items) / len(val_set)
-            best_val_loss = min(best_val_loss, val_loss)
-            if val_acc > best_val_acc:
-                print(f"New best model for val accuracy : {val_acc:4.2%}! saving the best model..")
-                torch.save(model.module.state_dict(), f"{save_dir}/best.pth")
-                best_val_acc = val_acc
-            torch.save(model.module.state_dict(), f"{save_dir}/last.pth")
-            print(
-                f"[Val] acc : {val_acc:4.2%}, loss: {val_loss:4.2} || "
-                f"best acc : {best_val_acc:4.2%}, best loss: {best_val_loss:4.2}"
-            )
-            logger.add_scalar("Val/loss", val_loss, epoch)
-            logger.add_scalar("Val/accuracy", val_acc, epoch)
-            logger.add_figure("results", figure, epoch)
-            print()
+                    loss_value = 0
+                    matches = 0
+
+            scheduler.step()    # LR Scheduler Update
+
+            # val loop   Validation 시작
+            with torch.no_grad():
+                print("Calculating validation results...")
+                model.eval()
+                val_loss_items = []
+                val_acc_items = []
+                figure = None
+                for val_batch in val_loader:
+                    inputs, labels = val_batch
+                    inputs = inputs.to(device)
+                    labels = labels.to(device)
+
+                    outs = model(inputs)
+                    preds = torch.argmax(outs, dim=-1)
+
+                    loss_item = criterion(outs, labels).item()
+                    acc_item = (labels == preds).sum().item()
+                    val_loss_items.append(loss_item)
+                    val_acc_items.append(acc_item)
+
+                    if figure is None:
+                        inputs_np = torch.clone(inputs).detach().cpu().permute(0, 2, 3, 1).numpy()
+                        inputs_np = dataset_module.denormalize_image(inputs_np, dataset.mean, dataset.std)
+                        figure = grid_image(
+                            inputs_np, labels, preds, n=16, shuffle=args.dataset != "MaskSplitByProfileDataset"
+                        )
+
+                val_loss = np.sum(val_loss_items) / len(val_loader)
+                val_acc = np.sum(val_acc_items) / len(val_set)
+                best_val_loss = min(best_val_loss, val_loss)
+                if val_acc > best_val_acc:
+                    print(f"New best model for val accuracy : {val_acc:4.2%}! saving the best model..")
+                    torch.save(model.module.state_dict(), f"{save_dir}/best.pth")
+                    best_val_acc = val_acc
+                torch.save(model.module.state_dict(), f"{save_dir}/last.pth")
+                print(
+                    f"[Val] acc : {val_acc:4.2%}, loss: {val_loss:4.2} || "
+                    f"best acc : {best_val_acc:4.2%}, best loss: {best_val_loss:4.2}"
+                )
+                logger.add_scalar("Val/loss", val_loss, epoch)
+                logger.add_scalar("Val/accuracy", val_acc, epoch)
+                logger.add_figure("results", figure, epoch)
+                print()
 
 
 if __name__ == '__main__':
@@ -246,7 +262,7 @@ if __name__ == '__main__':
     # Data and model checkpoints directories
     parser.add_argument('--seed', type=int, default=42, help='random seed (default: 42)')
     parser.add_argument('--epochs', type=int, default=1, help='number of epochs to train (default: 1)')
-    parser.add_argument('--dataset', type=str, default='MaskBaseDataset', help='dataset augmentation type (default: MaskBaseDataset)')
+    parser.add_argument('--dataset', type=str, default='MaskSplitByProfileDataset', help='dataset augmentation type (default: MaskBaseDataset)')
     parser.add_argument('--augmentation', type=str, default='TrainTransform', help='data augmentation type (default: TrainTransform)')
     parser.add_argument("--resize", nargs="+", type=list, default=[128, 96], help='resize size for image when training')
     #parser.add_argument("--resize", nargs="+", type=list, default=[224, 224], help='resize size for image when training')
