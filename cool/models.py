@@ -21,7 +21,7 @@ class convnext(nn.Module):
 # EfficientNet B6 : 528x528
 # b0 : 224x224
 class efficientnet(nn.Module):
-    def __init__(self, num_classes, freeze=True):
+    def __init__(self, num_classes, freeze=False):
         super(efficientnet, self).__init__()
 
         self.efficientnet = timm.create_model('efficientnet_b0', pretrained=True, num_classes=num_classes)

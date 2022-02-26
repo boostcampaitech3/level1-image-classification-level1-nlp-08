@@ -8,6 +8,8 @@ cool/__pycache__
 save_param/train_base_age
 save_param/train_base_gender
 save_param/train_base_mask
-s
+
 
 nohup.out
+output.csv
+save_param/train_base_age/fold1.pt
