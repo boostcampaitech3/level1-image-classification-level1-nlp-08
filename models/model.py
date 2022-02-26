@@ -11,8 +11,8 @@ class convnext(nn.Module):
 
         # if freeze == True:
         #     timm.utils.freeze(self.resnext)
-        #     self.resnext.fc.weight.requires_grad = True
-        #     self.resnext.fc.bias.requires_grad = True
+        #     self.convnext.fc.weight.requires_grad = True
+        #     self.convnext.fc.bias.requires_grad = True
 
     def forward(self, x):
         return self.convnext(x)
