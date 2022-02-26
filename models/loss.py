@@ -3,6 +3,30 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+
+class FCLSLoss(nn.Module):    #Focal + Labelsmoothing
+    def __init__(self, classes=3, smoothing=0.0,gamma=2, dim=-1):
+        super(FCLSLoss, self).__init__()
+        self.confidence = 1.0 - smoothing
+        self.smoothing = smoothing
+        self.cls = classes
+        self.dim = dim
+        self.gamma = gamma
+
+    def forward(self, input_tensor, target):
+        log_prob = input_tensor.log_softmax(dim=self.dim)
+
+        with torch.no_grad():
+            true_dist = torch.zeros_like(log_prob)
+            true_dist.fill_(self.smoothing / (self.cls - 1))
+            true_dist.scatter_(1, target.data.unsqueeze(1), self.confidence)
+                 
+        prob = torch.exp(log_prob)
+
+        Focal_prob = ((1 - prob) ** self.gamma) * log_prob
+        return torch.mean(torch.sum(-true_dist*Focal_prob, dim=self.dim))
+
+
 # https://discuss.pytorch.org/t/is-this-a-correct-implementation-for-focal-loss-in-pytorch/43327/8
 class FocalLoss(nn.Module):
     def __init__(self, weight=None,
@@ -66,6 +90,7 @@ class F1Loss(nn.Module):
 
 
 _criterion_entrypoints = {
+    'FCLS': FCLSLoss,
     'cross_entropy': nn.CrossEntropyLoss,
     'focal': FocalLoss,
     'label_smoothing': LabelSmoothingLoss,
