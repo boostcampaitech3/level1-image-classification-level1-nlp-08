@@ -11,6 +11,8 @@ from torch.utils.data import Dataset, Subset, random_split
 from torchvision import transforms
 from torchvision.transforms import *
 
+from augmentation import RandAugment
+
 IMG_EXTENSIONS = [
     ".jpg", ".JPG", ".jpeg", ".JPEG", ".png",
     ".PNG", ".ppm", ".PPM", ".bmp", ".BMP",
@@ -21,48 +23,30 @@ def is_image_file(filename):
     return any(filename.endswith(extension) for extension in IMG_EXTENSIONS)
 
 
-class BaseAugmentation:
-    def __init__(self, resize, mean, std, **args):
+class EvalTransform():
+    def __init__(self, resize):
         self.transform = transforms.Compose([
-            Resize(resize, Image.BILINEAR),
-            ToTensor(),
-            Normalize(mean=mean, std=std),
+            transforms.Resize(resize),
+            transforms.ToTensor(),
+            transforms.Normalize(mean = [0.485, 0.456, 0.406], std = [0.229, 0.224, 0.225])
         ])
-
-    def __call__(self, image):
-        return self.transform(image)
-
-
-class AddGaussianNoise(object):
-    """
-        transform 에 없는 기능들은 이런식으로 __init__, __call__, __repr__ 부분을
-        직접 구현하여 사용할 수 있습니다.
-    """
-
-    def __init__(self, mean=0., std=1.):
-        self.std = std
-        self.mean = mean
-
-    def __call__(self, tensor):
-        return tensor + torch.randn(tensor.size()) * self.std + self.mean
-
-    def __repr__(self):
-        return self.__class__.__name__ + '(mean={0}, std={1})'.format(self.mean, self.std)
+        
+    def __call__(self, img):
+        return self.transform(img)
 
 
-class CustomAugmentation:
-    def __init__(self, resize, mean, std, **args):
+class TrainTransform():
+    def __init__(self, n, magnitude, resize):
         self.transform = transforms.Compose([
-            CenterCrop((320, 256)),
-            Resize(resize, Image.BILINEAR),
-            ColorJitter(0.1, 0.1, 0.1, 0.1),
-            ToTensor(),
-            Normalize(mean=mean, std=std),
-            AddGaussianNoise()
+            augmentation.RandAugment(n = n, m = magnitude),
+            transforms.RandomResizedCrop(resize, scale=(0.5,1.0)),
+            transforms.RandomHorizontalFlip(0.5),
+            transforms.ToTensor(),
+            transforms.Normalize(mean = [0.485, 0.456, 0.406], std = [0.229, 0.224, 0.225])
         ])
-
-    def __call__(self, image):
-        return self.transform(image)
+        
+    def __call__(self, img):
+        return self.transform(img)
 
 
 class MaskLabels(int, Enum):
