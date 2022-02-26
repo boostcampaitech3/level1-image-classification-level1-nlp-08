@@ -38,7 +38,7 @@ class EvalTransform():
 class TrainTransform():
     def __init__(self, n, magnitude, resize):
         self.transform = transforms.Compose([
-            augmentation.RandAugment(n = n, m = magnitude),
+            RandAugment(n = n, m = magnitude),
             transforms.RandomResizedCrop(resize, scale=(0.5,1.0)),
             transforms.RandomHorizontalFlip(0.5),
             transforms.ToTensor(),
