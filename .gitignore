@@ -1,4 +1,13 @@
 mlruns
 train
+output.csv
 train.tar.gz
-cool/__pycache__/
+cool/__pycache__
+
+
+save_param/train_base_age
+save_param/train_base_gender
+save_param/train_base_mask
+s
+
+nohup.out
