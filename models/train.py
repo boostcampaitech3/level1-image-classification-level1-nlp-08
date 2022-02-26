@@ -86,14 +86,15 @@ def increment_path(path, exist_ok=False):
 def train(data_dir, model_dir, args):
     seed_everything(args.seed)
 
-    save_dir = increment_path(os.path.join(model_dir, args.name))
+    #save_dir = increment_path(os.path.join(model_dir, args.name))
+    save_dir = os.path.join(model_dir, args.name)
     
     target_list = ["mask", "gender", "age"]
 
     # -- settings
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
-
+    
     for target in target_list:
 
         print(f"\n{target} 예측을 시작합니다.")
@@ -156,8 +157,8 @@ def train(data_dir, model_dir, args):
         scheduler = StepLR(optimizer, args.lr_decay_step, gamma=0.5)
 
         # -- logging
-        logger = SummaryWriter(log_dir=save_dir)
-        with open(os.path.join(save_dir, 'config.json'), 'w', encoding='utf-8') as f:
+        logger = SummaryWriter(log_dir=os.path.join(save_dir, target))
+        with open(os.path.join(os.path.join(save_dir, target), 'config.json'), 'w', encoding='utf-8') as f:
             json.dump(vars(args), f, ensure_ascii=False, indent=4)
 
 #=====================================================================
@@ -245,9 +246,9 @@ def train(data_dir, model_dir, args):
                 best_val_loss = min(best_val_loss, val_loss)
                 if val_acc > best_val_acc:
                     print(f"New best model for val accuracy : {val_acc:4.2%}! saving the best model..")
-                    torch.save(model.module.state_dict(), f"{save_dir}/best.pth")
+                    torch.save(model.module.state_dict(), f"{save_dir}/{target}/best.pth")
                     best_val_acc = val_acc
-                torch.save(model.module.state_dict(), f"{save_dir}/last.pth")
+                torch.save(model.module.state_dict(), f"{save_dir}/{target}/last.pth")
                 print(
                     f"[Val] acc : {val_acc:4.2%}, loss: {val_loss:4.2} || "
                     f"best acc : {best_val_acc:4.2%}, best loss: {best_val_loss:4.2}"
