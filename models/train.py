@@ -12,7 +12,7 @@ import tqdm
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-from torch.optim.lr_scheduler import StepLR
+from torch.optim.lr_scheduler import StepLR, LambdaLR
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
@@ -152,12 +152,26 @@ def train(data_dir, model_dir, args):
             # -- loss & metric
             criterion = create_criterion(args.criterion)  # default: cross_entropy
             opt_module = getattr(import_module("torch.optim"), args.optimizer)  # default: SGD
-            optimizer = opt_module(
-                filter(lambda p: p.requires_grad, model.parameters()),
-                lr=args.lr,
-                weight_decay=5e-4
-            )
-            scheduler = StepLR(optimizer, args.lr_decay_step, gamma=0.5)
+            # optimizer = opt_module(
+            #     filter(lambda p: p.requires_grad, model.parameters()),
+            #     lr=args.lr,
+            #     weight_decay=5e-4
+            # )
+            # scheduler = StepLR(optimizer, args.lr_decay_step, gamma=0.5)
+            if target == 'gender':
+                gender_optimizer = opt_module(
+                    filter(lambda p: p.requires_grad, model.parameters()),
+                    lr=args.lr,
+                    weight_decay=5e-4
+                )
+                gender_scheduler = StepLR(gender_optimizer, args.lr_decay_step, gamma=0.5)
+            else:
+                optimizer = opt_module(
+                    filter(lambda p: p.requires_grad, model.parameters()),
+                    lr=args.lr,
+                    weight_decay=5e-4
+                )
+                scheduler = LambdaLR(optimizer, lr_lambda=lambda epoch: 0.95**epoch)
             
             
 
@@ -191,21 +205,27 @@ def train(data_dir, model_dir, args):
                     inputs = inputs.to(device)
                     labels = labels.to(device)
 
-                    optimizer.zero_grad()
+                    if target == 'gender':
+                        gender_optimizer.zero_grad()
+                    else:
+                        optimizer.zero_grad()
 
                     outs = model(inputs)
                     preds = torch.argmax(outs, dim=-1)
                     loss = criterion(outs, labels)
 
                     loss.backward()
-                    optimizer.step()
+                    if target == 'gender':
+                        gender_optimizer.step()
+                    else:
+                        optimizer.step()
 
                     loss_value += loss.item()
                     matches += (preds == labels).sum().item()
                     if (idx + 1) % args.log_interval == 0:
                         train_loss = loss_value / args.log_interval
                         train_acc = matches / args.batch_size / args.log_interval
-                        current_lr = get_lr(optimizer)
+                        current_lr = get_lr(gender_optimizer) if target == 'gender' else get_lr(optimizer)
                         print(f"fold :{fold_num} ||  "
                             f"Epoch[{epoch}/{args.epochs}]({idx + 1}/{len(train_loader)}) || "
                             f"training loss {train_loss:4.4} || training accuracy {train_acc:4.2%} || lr {current_lr}"
