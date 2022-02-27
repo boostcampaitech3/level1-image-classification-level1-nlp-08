@@ -117,8 +117,9 @@ def train(data_dir, model_dir, args):
         fold_sets = dataset._split_dataset()
         
         
+        best_fold_val_acc = 0
+        best_fold_val_loss = np.inf
 
-        
         for fold_num, (train_set,val_set) in enumerate(fold_sets,1):
             
 
@@ -170,10 +171,12 @@ def train(data_dir, model_dir, args):
             
     #=====================================================================
     # Training 시작
-            best_val_acc = 0
-            best_val_loss = np.inf
+            best_epoch_val_acc = 0
+            best_epoch_val_loss = np.inf
             for epoch in range(args.epochs):
                 # train loop
+                best_epoch_val_acc = 0
+                best_epoch_val_loss = np.inf
                 model.train()
                 loss_value = 0
                 matches = 0
@@ -255,22 +258,37 @@ def train(data_dir, model_dir, args):
 
                     val_loss = np.sum(val_loss_items) / len(val_loader)
                     val_acc = np.sum(val_acc_items) / len(val_set)
-                    best_val_loss = min(best_val_loss, val_loss)
-                    
-                    if val_acc > best_val_acc:
-                        print(f"New best model for val accuracy : {val_acc:4.2%}! saving the best model..")
-                        torch.save(model.module.state_dict(), f"{save_dir}/{target}/best.pth")
-                        best_val_acc = val_acc
-                    torch.save(model.module.state_dict(), f"{save_dir}/{target}/last.pth")
-                    print(f"fold :{fold_num} ||  "
-                        f"[Val] acc : {val_acc:4.2%}, loss: {val_loss:4.2} || "
-                        f"best acc : {best_val_acc:4.2%}, best loss: {best_val_loss:4.2}"
-                    )
+                    best_epoch_val_acc = min(best_epoch_val_acc, val_loss)
                     logger.add_scalar("Val/loss", val_loss, epoch)
                     logger.add_scalar("Val/accuracy", val_acc, epoch)
                     logger.add_figure("results", figure, epoch)
-                    print()
-                    ######################다시보기#######################
+                    
+                    if val_acc > best_epoch_val_acc:
+                        best_epoch_val_acc = val_acc
+                        best_epoch_val_loss = val_loss
+                        print(f"New best model for val accuracy for epoch {epoch}: {val_acc:4.2%}! saving the best model..")
+                    
+                    print(f"epoch :{epoch} ||  "
+                    f"[Val] acc : {val_acc:4.2%}, loss: {val_loss:4.2} || "
+                    f"best acc : {best_epoch_val_acc:4.2%}, best loss: {best_epoch_val_loss:4.2}"
+                    )
+                    
+                    
+            if best_epoch_val_acc > best_fold_val_acc:
+                best_fold_val_acc = best_epoch_val_acc
+                best_fold_val_loss = best_epoch_val_loss
+                print(f"New best model for val accuracy for fold {fold_num} : {best_fold_val_acc:4.2%}! saving the best model..")                        
+                torch.save(model.module.state_dict(), f"{save_dir}/{target}/best.pth")
+            
+            torch.save(model.module.state_dict(), f"{save_dir}/{target}/last.pth")
+            
+            print(f"fold :{fold_num} ||  "
+                f"[Val] fold {fold_num} acc : {best_epoch_val_acc:4.2%}, loss: {best_epoch_val_loss:4.2} || "
+                f"best acc : {best_fold_val_acc:4.2%}, best loss: {best_fold_val_loss:4.2}"
+            )
+            
+            print()
+            ######################다시보기#######################
 
 
 if __name__ == '__main__':
