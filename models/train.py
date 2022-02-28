@@ -90,7 +90,7 @@ def train(data_dir, model_dir, args):
     #save_dir = increment_path(os.path.join(model_dir, args.name))
     save_dir = os.path.join(model_dir, args.name)
     
-    target_list = ["mask", "gender", "age"]
+    target_list = ["gender", "age"]
     
     #############################################
     # -- settings
@@ -151,7 +151,7 @@ def train(data_dir, model_dir, args):
             model = torch.nn.DataParallel(model)
 
             # -- loss & metric
-            criterion = create_criterion(args.criterion)  # default: cross_entropy
+            criterion = create_criterion(args.criterion, classes=num_classes)  # default: cross_entropy
             opt_module = getattr(import_module("torch.optim"), args.optimizer)  # default: SGD
             # optimizer = opt_module(
             #     filter(lambda p: p.requires_grad, model.parameters()),
@@ -165,7 +165,7 @@ def train(data_dir, model_dir, args):
                     lr=args.lr,
                     weight_decay=5e-4
                 )
-                gender_scheduler = StepLR(gender_optimizer, args.lr_decay_step, gamma=0.5)
+                scheduler = StepLR(gender_optimizer, args.lr_decay_step, gamma=0.5)
             else:
                 optimizer = opt_module(
                     filter(lambda p: p.requires_grad, model.parameters()),
@@ -190,8 +190,6 @@ def train(data_dir, model_dir, args):
             best_epoch_val_loss = np.inf
             for epoch in range(args.epochs):
                 # train loop
-                best_epoch_val_acc = 0
-                best_epoch_val_loss = np.inf
                 model.train()
                 loss_value = 0
                 matches = 0
@@ -279,7 +277,7 @@ def train(data_dir, model_dir, args):
 
                     val_loss = np.sum(val_loss_items) / len(val_loader)
                     val_acc = np.sum(val_acc_items) / len(val_set)
-                    best_epoch_val_acc = min(best_epoch_val_acc, val_loss)
+                    
                     logger.add_scalar("Val/loss", val_loss, epoch)
                     logger.add_scalar("Val/accuracy", val_acc, epoch)
                     logger.add_figure("results", figure, epoch)
@@ -321,7 +319,7 @@ if __name__ == '__main__':
 
     # Data and model checkpoints directories
     parser.add_argument('--seed', type=int, default=42, help='random seed (default: 42)')
-    parser.add_argument('--epochs', type=int, default=15, help='number of epochs to train (default: 1)')
+    parser.add_argument('--epochs', type=int, default=10, help='number of epochs to train (default: 1)')
     parser.add_argument('--dataset', type=str, default='MaskSplitByProfileDataset', help='dataset augmentation type (default: MaskBaseDataset)')
     parser.add_argument('--augmentation', type=str, default='TrainTransform', help='data augmentation type (default: TrainTransform)')
     parser.add_argument("--resize", nargs="+", type=list, default=[128, 96], help='resize size for image when training')
@@ -329,13 +327,13 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=64, help='input batch size for training (default: 64)')
     parser.add_argument('--valid_batch_size', type=int, default=1000, help='input batch size for validing (default: 1000)')
     
-    parser.add_argument('--model', type=str, default='convnext', help='model type (default: BaseModel)')
+    parser.add_argument('--model', type=str, default='resnext', help='model type (default: BaseModel)')
     
     parser.add_argument('--optimizer', type=str, default='Adam', help='optimizer type (default: SGD)')
     parser.add_argument('--lr', type=float, default=1e-3, help='learning rate (default: 1e-3)')
     parser.add_argument('--val_ratio', type=float, default=0.2, help='ratio for validaton (default: 0.2)')
-    parser.add_argument('--criterion', type=str, default='FCLS', help='criterion type (default: cross_entropy)')
-    parser.add_argument('--lr_decay_step', type=int, default=5, help='learning rate scheduler deacy step (default: 20)')
+    parser.add_argument('--criterion', type=str, default='f1', help='criterion type (default: cross_entropy)')
+    parser.add_argument('--lr_decay_step', type=int, default=3, help='learning rate scheduler deacy step (default: 20)')
     parser.add_argument('--log_interval', type=int, default=20, help='how many batches to wait before logging training status')
     parser.add_argument('--name', default='exp', help='model save at {SM_MODEL_DIR}/{name}')
 

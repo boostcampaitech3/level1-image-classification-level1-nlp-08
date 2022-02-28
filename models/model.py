@@ -27,7 +27,7 @@ class effnet(nn.Module):
 class resnext(nn.Module):
     def __init__(self, num_classes):
         super(resnext, self).__init__()
-        self.resnext = timm.create_model('resnext101_32x8d', pretrained=True, num_classes=num_classes)
+        self.resnext = timm.create_model('resnext101_32x8d', pretrained=True, num_classes=num_classes, drop_rate = 0.5)
 
     def forward(self, x):
         return self.resnext(x)
