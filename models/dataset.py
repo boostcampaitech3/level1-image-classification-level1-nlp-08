@@ -12,7 +12,10 @@ from torchvision import transforms
 from torchvision.transforms import *
 from sklearn.model_selection import StratifiedKFold
 
-from augmentation import RandAugment
+from augmentation import RandAugMix
+import albumentations as A
+import albumentations.pytorch
+import cv2
 
 IMG_EXTENSIONS = [
     ".jpg", ".JPG", ".jpeg", ".JPEG", ".png",
@@ -37,17 +40,20 @@ class EvalTransform():
 
 
 class TrainTransform():
-    def __init__(self, n, magnitude, resize):
-        self.transform = transforms.Compose([
-            RandAugment(n = n, m = magnitude),
-            transforms.RandomResizedCrop(resize, scale=(0.5,1.0)),
-            transforms.RandomHorizontalFlip(0.5),
-            transforms.ToTensor(),
-            transforms.Normalize(mean = [0.485, 0.456, 0.406], std = [0.229, 0.224, 0.225])
+    def __init__(self, resize, severity=3, width=3, alpha=1.):
+        w, h = resize
+        self.transform = A.Compose([
+            RandAugMix(severity, width, alpha=1, p=1),
+            A.CenterCrop(w,h),
+            A.HorizontalFlip(p=0.5),
+            A.augmentations.transforms.Normalize(),
+            A.pytorch.transforms.ToTensorV2()
         ])
         
     def __call__(self, img):
-        return self.transform(img)
+        img = np.array(img)
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+        return self.transform(image = img)["image"]
 
 
 class MaskLabels(int, Enum):
