@@ -238,17 +238,31 @@ class MaskSplitByProfileDataset(MaskBaseDataset):
     def _split_dataset(self):
 
         folds=[]      
-        stratifiedkfold = StratifiedKFold(n_splits=4,random_state=0,shuffle=True)
-        X=self.image_paths
-        y=[gender_label*3+age_label for gender_label,age_label in zip(self.gender_labels,self.age_labels)]
-        for train_index, validate_index in stratifiedkfold.split(X,y):
-            folds.append((train_index,validate_index))
+        stratifiedkfold = StratifiedKFold(n_splits=5,random_state=0,shuffle=True)
+        X=self.indices
+        y=self.indices_label
         
-        
+        for train_indices, validate_indices in stratifiedkfold.split(X,y):
+            folds.append((train_indices, validate_indices))
+
+            
+        cnt=0
         folds_sets=[]
-        for train_index,validate_index in folds:
+        for train_indices, validate_indices in folds:
+            
+            train_index=[]
+            for idx in train_indices:
+                train_index +=  X[idx]
+                
+            validate_index=[]
+            for idx in validate_indices:
+                validate_index +=  X[idx]   
+            
+
             train_set = Subset(self,train_index)
             val_set = Subset(self,validate_index)
+
+            
             folds_sets.append((train_set,val_set))
         
         return folds_sets
@@ -256,11 +270,19 @@ class MaskSplitByProfileDataset(MaskBaseDataset):
     
     def setup(self):
         profiles = os.listdir(self.data_dir)
+        index=0
+
         for profile in profiles:
             if profile.startswith("."):  # "." 로 시작하는 파일은 무시합니다
                 continue
 
             img_folder = os.path.join(self.data_dir, profile)
+            indices=[]
+            id, gender, race, age = profile.split("_")
+            gender_label = GenderLabels.from_str(gender)
+            age_label = AgeLabels.from_number(age)
+            index_label = gender_label*3 + age_label
+            
             for file_name in os.listdir(img_folder):
                 _file_name, ext = os.path.splitext(file_name)
                 if _file_name not in self._file_names:  # "." 로 시작하는 파일 및 invalid 한 파일들은 무시합니다
@@ -268,15 +290,18 @@ class MaskSplitByProfileDataset(MaskBaseDataset):
 
                 img_path = os.path.join(self.data_dir, profile, file_name)  # (resized_data, 000004_male_Asian_54, mask1.jpg)
                 mask_label = self._file_names[_file_name]
-
-                id, gender, race, age = profile.split("_")
-                gender_label = GenderLabels.from_str(gender)
-                age_label = AgeLabels.from_number(age)
-
                 self.image_paths.append(img_path)
                 self.mask_labels.append(mask_label)
                 self.gender_labels.append(gender_label)
                 self.age_labels.append(age_label)
+                
+                
+                
+                indices.append(index)
+                index+=1
+                
+            self.indices.append(indices)
+            self.indices_label.append(index_label)
                 
                 
 
