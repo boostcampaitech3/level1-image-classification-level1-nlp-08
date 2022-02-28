@@ -90,7 +90,7 @@ def train(data_dir, model_dir, args):
     #save_dir = increment_path(os.path.join(model_dir, args.name))
     save_dir = os.path.join(model_dir, args.name)
     
-    target_list = ["mask", "gender", "age"]
+    target_list = ["gender", "age"]
     
     #############################################
     # -- settings
@@ -165,7 +165,7 @@ def train(data_dir, model_dir, args):
                     lr=args.lr,
                     weight_decay=5e-4
                 )
-                gender_scheduler = StepLR(gender_optimizer, args.lr_decay_step, gamma=0.5)
+                scheduler = StepLR(gender_optimizer, args.lr_decay_step, gamma=0.5)
             else:
                 optimizer = opt_module(
                     filter(lambda p: p.requires_grad, model.parameters()),
