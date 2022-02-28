@@ -10,7 +10,8 @@ from dataset import TestDataset, MaskBaseDataset
 
 
 def load_model(saved_model, num_classes, target, device):
-    model_cls = getattr(import_module("model"), args.model)
+    #model_cls = getattr(import_module("model"), args.model)
+    model_cls = getattr(import_module('model'), getattr(args, f'{target}_model'))
     model = model_cls(
         num_classes=num_classes
     )
@@ -49,9 +50,7 @@ def inference(data_dir, model_dir, output_dir, args):
     )
 
     for target in target_list:
-        #num_classes = MaskBaseDataset.num_classes  # 18
         num_classes = 2 if target == 'gender' else 3
-        #model = load_model(model_dir, num_classes, device).to(device)
         model = load_model(model_dir, num_classes, target, device).to(device)
         model.eval()
 
@@ -91,8 +90,13 @@ if __name__ == '__main__':
 
     # Data and model checkpoints directories
     parser.add_argument('--batch_size', type=int, default=1000, help='input batch size for validing (default: 1000)')
-    parser.add_argument('--resize', type=tuple, default=(96, 128), help='resize size for image when you trained (default: (96, 128))')
-    parser.add_argument('--model', type=str, default='convnext', help='model type (default: BaseModel)')
+    #parser.add_argument('--resize', type=tuple, default=(96, 128), help='resize size for image when you trained (default: (96, 128))')
+    parser.add_argument('--resize', type=tuple, default=(224, 224), help='resize size for image when you trained (default: (96, 128))')
+    #parser.add_argument('--model', type=str, default='convnext', help='model type (default: BaseModel)')
+
+    parser.add_argument('--gender_model', type=str, default='convnext', help='model type (default: convnext)')
+    parser.add_argument('--mask_model', type=str, default='convnext', help='model type (default: convnext)')
+    parser.add_argument('--age_model', type=str, default='convnext', help='model type (default: convnext)')
 
     # Container environment
     parser.add_argument('--data_dir', type=str, default=os.environ.get('SM_CHANNEL_EVAL', '/opt/ml/input/data/eval'))
