@@ -90,7 +90,7 @@ def train(data_dir, model_dir, args):
     #save_dir = increment_path(os.path.join(model_dir, args.name))
     save_dir = os.path.join(model_dir, args.name)
     
-    target_list = ["gender", "age"]
+    target_list = ["mask", "gender", "age"]
     
     #############################################
     # -- settings
@@ -104,8 +104,9 @@ def train(data_dir, model_dir, args):
     transform_module = getattr(import_module("dataset"), args.augmentation)  # default: BaseAugmentation
     transform = transform_module(
                 resize=args.resize,
-                n = 2,
-                magnitude = 9
+                severity=3,
+                width=3,
+                alpha=1.
             )
     dataset.set_transform(transform)
     
@@ -322,10 +323,10 @@ if __name__ == '__main__':
     parser.add_argument('--epochs', type=int, default=10, help='number of epochs to train (default: 1)')
     parser.add_argument('--dataset', type=str, default='MaskSplitByProfileDataset', help='dataset augmentation type (default: MaskBaseDataset)')
     parser.add_argument('--augmentation', type=str, default='TrainTransform', help='data augmentation type (default: TrainTransform)')
-    parser.add_argument("--resize", nargs="+", type=list, default=[128, 96], help='resize size for image when training')
-    #parser.add_argument("--resize", nargs="+", type=list, default=[224, 224], help='resize size for image when training')
+    #parser.add_argument("--resize", nargs="+", type=list, default=[128, 96], help='resize size for image when training')
+    parser.add_argument("--resize", nargs="+", type=list, default=[224, 224], help='resize size for image when training')
     parser.add_argument('--batch_size', type=int, default=64, help='input batch size for training (default: 64)')
-    parser.add_argument('--valid_batch_size', type=int, default=1000, help='input batch size for validing (default: 1000)')
+    parser.add_argument('--valid_batch_size', type=int, default=300, help='input batch size for validing (default: 1000)')
     
     parser.add_argument('--model', type=str, default='resnext', help='model type (default: BaseModel)')
     
