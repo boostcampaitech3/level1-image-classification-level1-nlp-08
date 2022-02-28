@@ -277,7 +277,7 @@ def train(data_dir, model_dir, args):
 
                     val_loss = np.sum(val_loss_items) / len(val_loader)
                     val_acc = np.sum(val_acc_items) / len(val_set)
-                    best_epoch_val_acc = min(best_epoch_val_acc, val_loss)
+                    
                     logger.add_scalar("Val/loss", val_loss, epoch)
                     logger.add_scalar("Val/accuracy", val_acc, epoch)
                     logger.add_figure("results", figure, epoch)
