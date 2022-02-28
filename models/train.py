@@ -90,7 +90,7 @@ def train(data_dir, model_dir, args):
     #save_dir = increment_path(os.path.join(model_dir, args.name))
     save_dir = os.path.join(model_dir, args.name)
     
-    target_list = ["mask", "gender", "age"]
+    target_list = ["gender", "age"]
     
     #############################################
     # -- settings
@@ -151,7 +151,7 @@ def train(data_dir, model_dir, args):
             model = torch.nn.DataParallel(model)
 
             # -- loss & metric
-            criterion = create_criterion(args.criterion)  # default: cross_entropy
+            criterion = create_criterion(args.criterion, classes=num_classes)  # default: cross_entropy
             opt_module = getattr(import_module("torch.optim"), args.optimizer)  # default: SGD
             # optimizer = opt_module(
             #     filter(lambda p: p.requires_grad, model.parameters()),
