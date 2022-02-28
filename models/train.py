@@ -90,7 +90,7 @@ def train(data_dir, model_dir, args):
     #save_dir = increment_path(os.path.join(model_dir, args.name))
     save_dir = os.path.join(model_dir, args.name)
     
-    target_list = ["gender", "age"]
+    target_list = ["mask", "gender", "age"]
     
     #############################################
     # -- settings
