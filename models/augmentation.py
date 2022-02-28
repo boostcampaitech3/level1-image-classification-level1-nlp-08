@@ -2,265 +2,197 @@
 #이거 import해서 쓰면 될 것 같아요
 #https://github.com/ildoonet/pytorch-randaugment
 
-import random
+#https://github.com/ildoonet/pytorch-randaugment
+#https://www.kaggle.com/haqishen
 
+import random
 import PIL, PIL.ImageOps, PIL.ImageEnhance, PIL.ImageDraw
 import numpy as np
 import torch
 from PIL import Image
+from albumentations.core.transforms_interface import ImageOnlyTransform
+import albumentations as A
 
-
-def ShearX(img, v):  # [-0.3, 0.3]
-    assert -0.3 <= v <= 0.3
-    if random.random() > 0.5:
-        v = -v
-    return img.transform(img.size, PIL.Image.AFFINE, (1, v, 0, 0, 1, 0))
-
-
-def ShearY(img, v):  # [-0.3, 0.3]
-    assert -0.3 <= v <= 0.3
-    if random.random() > 0.5:
-        v = -v
-    return img.transform(img.size, PIL.Image.AFFINE, (1, 0, 0, v, 1, 0))
-
-
-def TranslateX(img, v):  # [-150, 150] => percentage: [-0.45, 0.45]
-    assert -0.45 <= v <= 0.45
-    if random.random() > 0.5:
-        v = -v
-    v = v * img.size[0]
-    return img.transform(img.size, PIL.Image.AFFINE, (1, 0, v, 0, 1, 0))
-
-
-def TranslateXabs(img, v):  # [-150, 150] => percentage: [-0.45, 0.45]
-    assert 0 <= v
-    if random.random() > 0.5:
-        v = -v
-    return img.transform(img.size, PIL.Image.AFFINE, (1, 0, v, 0, 1, 0))
-
-
-def TranslateY(img, v):  # [-150, 150] => percentage: [-0.45, 0.45]
-    assert -0.45 <= v <= 0.45
-    if random.random() > 0.5:
-        v = -v
-    v = v * img.size[1]
-    return img.transform(img.size, PIL.Image.AFFINE, (1, 0, 0, 0, 1, v))
-
-
-def TranslateYabs(img, v):  # [-150, 150] => percentage: [-0.45, 0.45]
-    assert 0 <= v
-    if random.random() > 0.5:
-        v = -v
-    return img.transform(img.size, PIL.Image.AFFINE, (1, 0, 0, 0, 1, v))
-
-
-def Rotate(img, v):  # [-30, 30]
-    assert -30 <= v <= 30
-    if random.random() > 0.5:
-        v = -v
-    return img.rotate(v)
-
-
-def AutoContrast(img, _):
-    return PIL.ImageOps.autocontrast(img)
-
-
-def Invert(img, _):
-    return PIL.ImageOps.invert(img)
-
-
-def Equalize(img, _):
-    return PIL.ImageOps.equalize(img)
-
-
-def Flip(img, _):  # not from the paper
-    return PIL.ImageOps.mirror(img)
-
-
-def Solarize(img, v):  # [0, 256]
-    assert 0 <= v <= 256
-    return PIL.ImageOps.solarize(img, v)
-
-
-def SolarizeAdd(img, addition=0, threshold=128):
-    img_np = np.array(img).astype(np.int)
-    img_np = img_np + addition
-    img_np = np.clip(img_np, 0, 255)
-    img_np = img_np.astype(np.uint8)
-    img = Image.fromarray(img_np)
-    return PIL.ImageOps.solarize(img, threshold)
-
-
-def Posterize(img, v):  # [4, 8]
-    v = int(v)
-    v = max(1, v)
-    return PIL.ImageOps.posterize(img, v)
-
-
-def Contrast(img, v):  # [0.1,1.9]
-    assert 0.1 <= v <= 1.9
-    return PIL.ImageEnhance.Contrast(img).enhance(v)
-
-
-def Color(img, v):  # [0.1,1.9]
-    assert 0.1 <= v <= 1.9
-    return PIL.ImageEnhance.Color(img).enhance(v)
-
-
-def Brightness(img, v):  # [0.1,1.9]
-    assert 0.1 <= v <= 1.9
-    return PIL.ImageEnhance.Brightness(img).enhance(v)
-
-
-def Sharpness(img, v):  # [0.1,1.9]
-    assert 0.1 <= v <= 1.9
-    return PIL.ImageEnhance.Sharpness(img).enhance(v)
-
-
-def Cutout(img, v):  # [0, 60] => percentage: [0, 0.2]
-    assert 0.0 <= v <= 0.2
-    if v <= 0.:
-        return img
-
-    v = v * img.size[0]
-    return CutoutAbs(img, v)
-
-
-def CutoutAbs(img, v):  # [0, 60] => percentage: [0, 0.2]
-    # assert 0 <= v <= 20
-    if v < 0:
-        return img
-    w, h = img.size
-    x0 = np.random.uniform(w)
-    y0 = np.random.uniform(h)
-
-    x0 = int(max(0, x0 - v / 2.))
-    y0 = int(max(0, y0 - v / 2.))
-    x1 = min(w, x0 + v)
-    y1 = min(h, y0 + v)
-
-    xy = (x0, y0, x1, y1)
-    color = (125, 123, 114)
-    # color = (0, 0, 0)
-    img = img.copy()
-    PIL.ImageDraw.Draw(img).rectangle(xy, color)
-    return img
-
-
-def SamplePairing(imgs):  # [0, 0.4]
-    def f(img1, v):
-        i = np.random.choice(len(imgs))
-        img2 = PIL.Image.fromarray(imgs[i])
-        return PIL.Image.blend(img1, img2, v)
-
-    return f
-
-
-def Identity(img, v):
-    return img
-
-
-def augment_list():  # 16 oeprations and their ranges
-    # https://github.com/google-research/uda/blob/master/image/randaugment/policies.py#L57
-    # l = [
-    #     (Identity, 0., 1.0),
-    #     (ShearX, 0., 0.3),  # 0
-    #     (ShearY, 0., 0.3),  # 1
-    #     (TranslateX, 0., 0.33),  # 2
-    #     (TranslateY, 0., 0.33),  # 3
-    #     (Rotate, 0, 30),  # 4
-    #     (AutoContrast, 0, 1),  # 5
-    #     (Invert, 0, 1),  # 6
-    #     (Equalize, 0, 1),  # 7
-    #     (Solarize, 0, 110),  # 8
-    #     (Posterize, 4, 8),  # 9
-    #     # (Contrast, 0.1, 1.9),  # 10
-    #     (Color, 0.1, 1.9),  # 11
-    #     (Brightness, 0.1, 1.9),  # 12
-    #     (Sharpness, 0.1, 1.9),  # 13
-    #     # (Cutout, 0, 0.2),  # 14
-    #     # (SamplePairing(imgs), 0, 0.4),  # 15
-    # ]
-
-    # https://github.com/tensorflow/tpu/blob/8462d083dd89489a79e3200bcc8d4063bf362186/models/official/efficientnet/autoaugment.py#L505
-    l = [
-        (AutoContrast, 0, 1),
-        (Equalize, 0, 1),
-        (Invert, 0, 1),
-        (Rotate, 0, 30),
-        (Posterize, 0, 4),
-        (Solarize, 0, 256),
-        (SolarizeAdd, 0, 110),
-        (Color, 0.1, 1.9),
-        (Contrast, 0.1, 1.9),
-        (Brightness, 0.1, 1.9),
-        (Sharpness, 0.1, 1.9),
-        (ShearX, 0., 0.3),
-        (ShearY, 0., 0.3),
-        (CutoutAbs, 0, 40),
-        (TranslateXabs, 0., 100),
-        (TranslateYabs, 0., 100),
-    ]
-
-    return l
-
-
-class Lighting(object):
-    """Lighting noise(AlexNet - style PCA - based noise)"""
-
-    def __init__(self, alphastd, eigval, eigvec):
-        self.alphastd = alphastd
-        self.eigval = torch.Tensor(eigval)
-        self.eigvec = torch.Tensor(eigvec)
-
-    def __call__(self, img):
-        if self.alphastd == 0:
-            return img
-
-        alpha = img.new().resize_(3).normal_(0, self.alphastd)
-        rgb = self.eigvec.type_as(img).clone() \
-            .mul(alpha.view(1, 3).expand(3, 3)) \
-            .mul(self.eigval.view(1, 3).expand(3, 3)) \
-            .sum(1).squeeze()
-
-        return img.add(rgb.view(3, 1, 1).expand_as(img))
-
-
-class CutoutDefault(object):
+def int_parameter(level, maxval):
+    """Helper function to scale `val` between 0 and maxval .
+    Args:
+    level: Level of the operation that will be between [0, `PARAMETER_MAX`].
+    maxval: Maximum value that the operation can have. This will be scaled to
+      level/PARAMETER_MAX.
+    Returns:
+    An int that results from scaling `maxval` according to `level`.
     """
-    Reference : https://github.com/quark0/darts/blob/master/cnn/utils.py
+    return int(level * maxval / 10)
+
+
+def float_parameter(level, maxval):
+    """Helper function to scale `val` between 0 and maxval.
+    Args:
+    level: Level of the operation that will be between [0, `PARAMETER_MAX`].
+    maxval: Maximum value that the operation can have. This will be scaled to
+      level/PARAMETER_MAX.
+    Returns:
+    A float that results from scaling `maxval` according to `level`.
     """
-    def __init__(self, length):
-        self.length = length
-
-    def __call__(self, img):
-        h, w = img.size(1), img.size(2)
-        mask = np.ones((h, w), np.float32)
-        y = np.random.randint(h)
-        x = np.random.randint(w)
-
-        y1 = np.clip(y - self.length // 2, 0, h)
-        y2 = np.clip(y + self.length // 2, 0, h)
-        x1 = np.clip(x - self.length // 2, 0, w)
-        x2 = np.clip(x + self.length // 2, 0, w)
-
-        mask[y1: y2, x1: x2] = 0.
-        mask = torch.from_numpy(mask)
-        mask = mask.expand_as(img)
-        img *= mask
-        return img
+    return float(level) * maxval / 10.
 
 
-class RandAugment:
-    def __init__(self, n, m):
-        self.n = n
-        self.m = m      # [0, 30]
-        self.augment_list = augment_list()
+def sample_level(n):
+    return np.random.uniform(low=0.1, high=n)
 
-    def __call__(self, img):
-        ops = random.choices(self.augment_list, k=self.n)
-        for op, minval, maxval in ops:
-            val = (float(self.m) / 30) * float(maxval - minval) + minval
-            img = op(img, val)
 
-        return img
+def autocontrast(pil_img, _):
+    return PIL.ImageOps.autocontrast(pil_img)
+
+
+def equalize(pil_img, _):
+    return PIL.ImageOps.equalize(pil_img)
+
+
+def posterize(pil_img, level):
+    level = int_parameter(sample_level(level), 4)
+    return PIL.ImageOps.posterize(pil_img, 4 - level)
+
+
+def rotate(pil_img, level):
+    degrees = int_parameter(sample_level(level), 30)
+    if np.random.uniform() > 0.5:
+        degrees = -degrees
+    return pil_img.rotate(degrees, resample=Image.BILINEAR)
+
+
+def solarize(pil_img, level):
+    level = int_parameter(sample_level(level), 256)
+    return PIL.ImageOps.solarize(pil_img, 256 - level)
+
+
+def shear_x(pil_img, level):
+    level = float_parameter(sample_level(level), 0.3)
+    if np.random.uniform() > 0.5:
+        level = -level
+    return pil_img.transform(pil_img.size,
+                           Image.AFFINE, (1, level, 0, 0, 1, 0),
+                           resample=Image.BILINEAR)
+
+
+def shear_y(pil_img, level):
+    level = float_parameter(sample_level(level), 0.3)
+    if np.random.uniform() > 0.5:
+        level = -level
+    return pil_img.transform(pil_img.size,
+                           Image.AFFINE, (1, 0, 0, level, 1, 0),
+                           resample=Image.BILINEAR)
+
+
+def translate_x(pil_img, level):
+    level = int_parameter(sample_level(level), pil_img.size[0] / 3)
+    if np.random.random() > 0.5:
+        level = -level
+    return pil_img.transform(pil_img.size,
+                           Image.AFFINE, (1, 0, level, 0, 1, 0),
+                           resample=Image.BILINEAR)
+
+
+def translate_y(pil_img, level):
+    level = int_parameter(sample_level(level), pil_img.size[0] / 3)
+    if np.random.random() > 0.5:
+        level = -level
+    return pil_img.transform(pil_img.size,
+                           Image.AFFINE, (1, 0, 0, 0, 1, level),
+                           resample=Image.BILINEAR)
+
+
+# operation that overlaps with ImageNet-C's test set
+def color(pil_img, level):
+    level = float_parameter(sample_level(level), 1.8) + 0.1
+    return ImageEnhance.Color(pil_img).enhance(level)
+
+
+# operation that overlaps with ImageNet-C's test set
+def contrast(pil_img, level):
+    level = float_parameter(sample_level(level), 1.8) + 0.1
+    return ImageEnhance.Contrast(pil_img).enhance(level)
+
+
+# operation that overlaps with ImageNet-C's test set
+def brightness(pil_img, level):
+    level = float_parameter(sample_level(level), 1.8) + 0.1
+    return ImageEnhance.Brightness(pil_img).enhance(level)
+
+
+# operation that overlaps with ImageNet-C's test set
+def sharpness(pil_img, level):
+    level = float_parameter(sample_level(level), 1.8) + 0.1
+    return ImageEnhance.Sharpness(pil_img).enhance(level)
+
+
+augmentations = [
+    autocontrast, equalize, posterize, rotate, solarize, shear_x, shear_y,
+    translate_x, translate_y
+]
+
+augmentations_all = [
+    autocontrast, equalize, posterize, rotate, solarize, shear_x, shear_y,
+    translate_x, translate_y, color, contrast, brightness, sharpness
+]
+
+def normalize(image):
+    """Normalize input image channel-wise to zero mean and unit variance."""
+    return image - 127
+
+def apply_op(image, op, severity):
+    #   image = np.clip(image, 0, 255)
+    pil_img = Image.fromarray(image)  # Convert to PIL.Image
+    pil_img = op(pil_img, severity)
+    return np.asarray(pil_img)
+
+def augment_and_mix(image, severity=3, width=3, depth=-1, alpha=1.):
+    """Perform AugMix augmentations and compute mixture.
+    Args:
+    image: Raw input image as float32 np.ndarray of shape (h, w, c)
+    severity: Severity of underlying augmentation operators (between 1 to 10).
+    width: Width of augmentation chain
+    depth: Depth of augmentation chain. -1 enables stochastic depth uniformly
+      from [1, 3]
+    alpha: Probability coefficient for Beta and Dirichlet distributions.
+    Returns:
+    mixed: Augmented and mixed image.
+    """
+    ws = np.float32(
+      np.random.dirichlet([alpha] * width))
+    m = np.float32(np.random.beta(alpha, alpha))
+
+    mix = np.zeros_like(image).astype(np.float32)
+    for i in range(width):
+        image_aug = image.copy()
+        depth = depth if depth > 0 else np.random.randint(1, 4)
+        for _ in range(depth):
+            op = np.random.choice(augmentations)
+            image_aug = apply_op(image_aug, op, severity)
+        # Preprocessing commutes since all coefficients are convex
+        mix += ws[i] * image_aug
+#         mix += ws[i] * normalize(image_aug)
+
+    mixed = (1 - m) * image + m * mix
+#     mixed = (1 - m) * normalize(image) + m * mix
+    return mixed
+
+
+class RandAugMix(ImageOnlyTransform):
+
+    def __init__(self, severity=3, width=3, depth=-1, alpha=1., always_apply=False, p=0.5):
+        super().__init__(always_apply, p)
+        self.severity = severity
+        self.width = width
+        self.depth = depth
+        self.alpha = alpha
+
+    def apply(self, image, **params):
+        image = augment_and_mix(
+            image,
+            self.severity,
+            self.width,
+            self.depth,
+            self.alpha
+        )
+        return image
