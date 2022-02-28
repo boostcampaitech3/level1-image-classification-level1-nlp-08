@@ -1,4 +1,5 @@
 import argparse
+from ast import Lambda
 import glob
 import json
 import multiprocessing
@@ -157,7 +158,7 @@ def train(data_dir, model_dir, args):
                 lr=args.lr,
                 weight_decay=5e-4
             )
-            scheduler = StepLR(optimizer, args.lr_decay_step, gamma=0.5)
+            scheduler = Lambda(optimizer, args.lr_decay_step, gamma=0.5)
             
             
 
@@ -310,11 +311,11 @@ if __name__ == '__main__':
     
     parser.add_argument('--model', type=str, default='convnext', help='model type (default: BaseModel)')
     
-    parser.add_argument('--optimizer', type=str, default='SGD', help='optimizer type (default: SGD)')
+    parser.add_argument('--optimizer', type=str, default='Adam', help='optimizer type (default: SGD)')
     parser.add_argument('--lr', type=float, default=1e-3, help='learning rate (default: 1e-3)')
     parser.add_argument('--val_ratio', type=float, default=0.2, help='ratio for validaton (default: 0.2)')
     parser.add_argument('--criterion', type=str, default='FCLS', help='criterion type (default: cross_entropy)')
-    parser.add_argument('--lr_decay_step', type=int, default=20, help='learning rate scheduler deacy step (default: 20)')
+    parser.add_argument('--lr_decay_step', type=int, default=5, help='learning rate scheduler deacy step (default: 20)')
     parser.add_argument('--log_interval', type=int, default=20, help='how many batches to wait before logging training status')
     parser.add_argument('--name', default='exp', help='model save at {SM_MODEL_DIR}/{name}')
 
