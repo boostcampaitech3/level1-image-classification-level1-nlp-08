@@ -148,6 +148,7 @@ def train(data_dir, model_dir, args):
             
             # -- model
             model_module = getattr(import_module("model"), args.model)  # default: BaseModel
+            
             model = model_module(
                 num_classes=num_classes
             ).to(device)
@@ -285,10 +286,10 @@ def train(data_dir, model_dir, args):
                     logger.add_scalar("Val/accuracy", val_acc, epoch)
                     logger.add_figure("results", figure, epoch)
                     
-                    if val_acc > best_epoch_val_acc:
+                    if val_loss < best_epoch_val_loss:
                         best_epoch_val_acc = val_acc
                         best_epoch_val_loss = val_loss
-                        print(f"New best model for val accuracy for epoch {epoch}: {val_acc:4.2%}! saving the best model..")
+                        print(f"New best model for val loss for epoch {epoch}: {val_loss:4.2%}! saving the best model..")
                     
                     print(f"epoch :{epoch} ||  "
                     f"[Val] acc : {val_acc:4.2%}, loss: {val_loss:4.2} || "
@@ -296,10 +297,10 @@ def train(data_dir, model_dir, args):
                     )
                     
                     
-            if best_epoch_val_acc > best_fold_val_acc:
+            if best_fold_val_loss > best_epoch_val_loss:
                 best_fold_val_acc = best_epoch_val_acc
                 best_fold_val_loss = best_epoch_val_loss
-                print(f"New best model for val accuracy for fold {fold_num} : {best_fold_val_acc:4.2%}! saving the best model..")                        
+                print(f"New best model for val loss for fold {fold_num} : {best_fold_val_loss:4.2%}! saving the best model..")                        
                 torch.save(model.module.state_dict(), f"{save_dir}/{target}/best.pth")
             
             torch.save(model.module.state_dict(), f"{save_dir}/{target}/last.pth")
@@ -326,16 +327,16 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', type=str, default='MaskSplitByProfileDataset', help='dataset augmentation type (default: MaskBaseDataset)')
     parser.add_argument('--augmentation', type=str, default='TrainTransform', help='data augmentation type (default: TrainTransform)')
     #parser.add_argument("--resize", nargs="+", type=list, default=[128, 96], help='resize size for image when training')
-    parser.add_argument("--resize", nargs="+", type=list, default=[224, 224], help='resize size for image when training')
+    parser.add_argument("--resize", nargs="+", type=list, default=[128, 96], help='resize size for image when training')
     parser.add_argument('--batch_size', type=int, default=64, help='input batch size for training (default: 64)')
-    parser.add_argument('--valid_batch_size', type=int, default=300, help='input batch size for validing (default: 1000)')
+    parser.add_argument('--valid_batch_size', type=int, default=500, help='input batch size for validing (default: 1000)')
     
-    parser.add_argument('--model', type=str, default='resnext', help='model type (default: BaseModel)')
+    parser.add_argument('--model', type=str, default='convnext', help='model type (default: BaseModel)')
     
     parser.add_argument('--optimizer', type=str, default='Adam', help='optimizer type (default: SGD)')
     parser.add_argument('--lr', type=float, default=1e-3, help='learning rate (default: 1e-3)')
     parser.add_argument('--val_ratio', type=float, default=0.2, help='ratio for validaton (default: 0.2)')
-    parser.add_argument('--criterion', type=str, default='f1', help='criterion type (default: cross_entropy)')
+    parser.add_argument('--criterion', type=str, default='label_smoothing', help='criterion type (default: cross_entropy)')
     parser.add_argument('--lr_decay_step', type=int, default=3, help='learning rate scheduler deacy step (default: 20)')
     parser.add_argument('--log_interval', type=int, default=20, help='how many batches to wait before logging training status')
     parser.add_argument('--name', default='exp', help='model save at {SM_MODEL_DIR}/{name}')

@@ -7,7 +7,7 @@ class convnext(nn.Module):
     def __init__(self, num_classes):
         super(convnext, self).__init__()
         self.convnext = timm.create_model('convnext_base', pretrained=True, num_classes = num_classes)
-
+        
     def forward(self, x):
         return self.convnext(x)
 

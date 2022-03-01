@@ -237,7 +237,8 @@ class MaskSplitByProfileDataset(MaskBaseDataset):
     """
 
     def __init__(self, data_dir, mean=(0.548, 0.504, 0.479), std=(0.237, 0.247, 0.246)):
-        self.indices = defaultdict(list)
+        self.indices = []
+        self.indices_label = []
         super().__init__(data_dir, mean, std)
 
     

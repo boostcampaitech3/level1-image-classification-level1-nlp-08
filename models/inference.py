@@ -89,9 +89,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     # Data and model checkpoints directories
-    parser.add_argument('--batch_size', type=int, default=1000, help='input batch size for validing (default: 1000)')
+    parser.add_argument('--batch_size', type=int, default=500, help='input batch size for validing (default: 1000)')
     #parser.add_argument('--resize', type=tuple, default=(96, 128), help='resize size for image when you trained (default: (96, 128))')
-    parser.add_argument('--resize', type=tuple, default=(224, 224), help='resize size for image when you trained (default: (96, 128))')
+    parser.add_argument('--resize', type=tuple, default=(96, 128), help='resize size for image when you trained (default: (96, 128))')
     #parser.add_argument('--model', type=str, default='convnext', help='model type (default: BaseModel)')
 
     parser.add_argument('--gender_model', type=str, default='convnext', help='model type (default: convnext)')
