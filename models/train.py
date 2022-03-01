@@ -12,7 +12,7 @@ import tqdm
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-from torch.optim.lr_scheduler import StepLR
+from torch.optim.lr_scheduler import StepLR, LambdaLR
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
@@ -94,6 +94,25 @@ def train(data_dir, model_dir, args):
     # -- settings
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
+
+    ##############################################################################################
+    # -- dataset
+    print('Start Augmentation.... 제발...\n')
+    dataset_module = getattr(import_module("dataset"), args.dataset)  # default: MaskBaseDataset
+    dataset = dataset_module(
+            data_dir=data_dir
+            )
+    # target을 넘겨줘서 label과 num_classes가 변화하도록 구현해야 한다.
+    # -- augmentation
+    transform_module = getattr(import_module("dataset"), args.augmentation)  # default: BaseAugmentation
+    transform = transform_module(
+        resize=args.resize,
+        n = 2,
+        magnitude = 9
+    )
+    dataset.set_transform(transform)
+    print(len(dataset))
+    ##############################################################################################
     
     for target in target_list:
 
@@ -101,21 +120,22 @@ def train(data_dir, model_dir, args):
 
         num_classes = 2 if target == "gender" else 3
         
-        # -- dataset
-        dataset_module = getattr(import_module("dataset"), args.dataset)  # default: MaskBaseDataset
-        dataset = dataset_module(
-                data_dir=data_dir
-                )
-        # target을 넘겨줘서 label과 num_classes가 변화하도록 구현해야 한다.                
+        # # -- dataset
+        # dataset_module = getattr(import_module("dataset"), args.dataset)  # default: MaskBaseDataset
+        # dataset = dataset_module(
+        #         data_dir=data_dir
+        #         )
+        # # target을 넘겨줘서 label과 num_classes가 변화하도록 구현해야 한다.
 
-        # -- augmentation
-        transform_module = getattr(import_module("dataset"), args.augmentation)  # default: BaseAugmentation
-        transform = transform_module(
-            resize=args.resize,
-            n = 2,
-            magnitude = 9
-        )
-        dataset.set_transform(transform)
+        # # -- augmentation
+        # transform_module = getattr(import_module("dataset"), args.augmentation)  # default: BaseAugmentation
+        # transform = transform_module(
+        #     resize=args.resize,
+        #     n = 2,
+        #     magnitude = 9
+        # )
+        # dataset.set_transform(transform)
+        # print(len(dataset))
 
         # -- data_loader
         train_set, val_set = dataset.split_dataset()
@@ -154,7 +174,10 @@ def train(data_dir, model_dir, args):
             lr=args.lr,
             weight_decay=5e-4
         )
-        scheduler = StepLR(optimizer, args.lr_decay_step, gamma=0.5)
+        if target == 'gender':
+            scheduler = StepLR(optimizer, args.lr_decay_step, gamma=0.5)
+        else:
+            scheduler = LambdaLR(optimizer, lr_lambda=lambda epoch: 0.95**epoch)
 
         # -- logging
         logger = SummaryWriter(log_dir=os.path.join(save_dir, target))
