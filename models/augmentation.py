@@ -266,11 +266,10 @@ class RandAugment:
 #         y1 = int(img.size[1] * y_range[0]) 
 #         y3 = int(img.size[1] * y_range[1])
 #         xy = [x1, y1, x3, y3]
-        PIL.ImageDraw.Draw(img).rectangle(xy, (0, 0, 0))
+#         PIL.ImageDraw.Draw(img).rectangle(xy, (0, 0, 0))
         
         ops = random.choices(self.augment_list, k=self.n)
         for op, minval, maxval in ops:
-            print(op)
             val = (float(self.m) / 30) * float(maxval - minval) + minval
             img = op(img, val)
         return img
