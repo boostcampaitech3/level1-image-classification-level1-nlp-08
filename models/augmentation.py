@@ -186,20 +186,18 @@ def augment_list():  # 16 oeprations and their ranges
     l = [
         (AutoContrast, 0, 1),
         (Equalize, 0, 1),
-        (Invert, 0, 1),
         (Rotate, 0, 30),
         (Posterize, 0, 4),
         (Solarize, 0, 256),
-        (SolarizeAdd, 0, 110),
+#         (SolarizeAdd, 0, 110),
         (Color, 0.1, 1.9),
-        (Contrast, 0.1, 1.9),
+        (Contrast, 0.1, 1.5),
         (Brightness, 0.1, 1.9),
-        (Sharpness, 0.1, 1.9),
+        (Sharpness, 0.1, 1.5),
         (ShearX, 0., 0.3),
         (ShearY, 0., 0.3),
-        (CutoutAbs, 0, 40),
-        (TranslateXabs, 0., 100),
-        (TranslateYabs, 0., 100),
+        (TranslateXabs, 0., 30),
+        (TranslateYabs, 0., 30),
     ]
 
     return l
@@ -258,9 +256,21 @@ class RandAugment:
         self.augment_list = augment_list()
 
     def __call__(self, img):
+#         x_range = np.linspace(0.38, 0.6, num = 10)
+#         x_range = sorted(np.random.choice(x_range, 2, replace=False))
+#         y_range = np.linspace(0.55, 0.674, num = 10)
+#         y_range = sorted(np.random.choice(y_range, 2, replace=False))
+        
+#         x1 = int(img.size[0] * x_range[0])
+#         x3 = int(img.size[0] * x_range[1])
+#         y1 = int(img.size[1] * y_range[0]) 
+#         y3 = int(img.size[1] * y_range[1])
+#         xy = [x1, y1, x3, y3]
+        PIL.ImageDraw.Draw(img).rectangle(xy, (0, 0, 0))
+        
         ops = random.choices(self.augment_list, k=self.n)
         for op, minval, maxval in ops:
+            print(op)
             val = (float(self.m) / 30) * float(maxval - minval) + minval
             img = op(img, val)
-
         return img
