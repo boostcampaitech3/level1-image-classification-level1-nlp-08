@@ -10,7 +10,7 @@ class convnext(nn.Module):
         self.convnext = timm.create_model('convnext_base', pretrained=True, num_classes = num_classes, drop_rate=0.5)
 
         if freeze == True:
-            timm.utils.freeze(self.resnext)
+            timm.utils.freeze(self.convnext)
             self.convnext.fc.weight.requires_grad = True
             self.convnext.fc.bias.requires_grad = True
 
