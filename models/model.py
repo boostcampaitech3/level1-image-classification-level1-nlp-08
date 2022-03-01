@@ -7,7 +7,7 @@ class convnext(nn.Module):
     def __init__(self, num_classes):
         super(convnext, self).__init__()
 
-        self.convnext = timm.create_model('convnext_base', pretrained=True, num_classes = num_classes)
+        self.convnext = timm.create_model('convnext_base', pretrained=True, num_classes = num_classes, drop_rate=0.5)
 
         # if freeze == True:
         #     timm.utils.freeze(self.resnext)
