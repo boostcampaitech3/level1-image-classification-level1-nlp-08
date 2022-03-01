@@ -3,6 +3,7 @@ train
 output.csv
 train.tar.gz
 cool/__pycache__
+models/__pycache__
 
 
 save_param/train_base_age
