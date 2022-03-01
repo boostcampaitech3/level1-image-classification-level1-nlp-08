@@ -238,9 +238,9 @@ class MaskBaseDataset(Dataset):
 #     """
 
 #     def __init__(self, data_dir, mean=(0.548, 0.504, 0.479), std=(0.237, 0.247, 0.246), val_ratio=0.2):
-        #  #self.indices = defaultdict(list)
-        #  self.indices = [list]
-        #  self.indices_label = []
+#         self.indices = defaultdict(list)
+#         self.indices = [list]
+#         self.indices_label = []
 #         super().__init__(data_dir, mean, std, val_ratio)
 
 #     @staticmethod
@@ -409,8 +409,8 @@ class MaskSplitByProfileDataset(MaskBaseDataset):
     #                 self.indices[phase].append(cnt)
     #                 cnt += 1
 
-    # def split_dataset(self) -> List[Subset]:
-    #     return [Subset(self, indices) for phase, indices in self.indices.items()]
+    def split_dataset(self) -> List[Subset]:
+        return [Subset(self, indices) for phase, indices in self.indices.items()]
 
     def setup(self):
         profiles = os.listdir(self.data_dir)
