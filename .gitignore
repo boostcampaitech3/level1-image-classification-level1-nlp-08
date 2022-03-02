@@ -13,3 +13,8 @@ save_param/train_base_mask
 nohup.out
 output.csv
 save_param/train_base_age/fold1.pt
+
+models/model
+models/wandb
+models/__pycache__
+models/__pycache__/model.cpython-38.pyc
