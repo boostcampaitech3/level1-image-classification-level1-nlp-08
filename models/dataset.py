@@ -28,8 +28,9 @@ def is_image_file(filename):
 class EvalTransform():
     def __init__(self, resize):
         self.transform = transforms.Compose([
-            transforms.Resize(resize),
+            transforms.CenterCrop((312, 244)),
             transforms.ToTensor(),
+            transforms.Resize((224, 224)),
             transforms.Normalize(mean = [0.485, 0.456, 0.406], std = [0.229, 0.224, 0.225])
         ])
         
@@ -41,9 +42,13 @@ class TrainTransform():
     def __init__(self, n, magnitude, resize):
         self.transform = transforms.Compose([
             #RandAugment(n = n, m = magnitude),
-            transforms.RandomResizedCrop(resize, scale=(0.5,1.0)),
-            transforms.RandomHorizontalFlip(0.5),
+            # transforms.RandomResizedCrop(resize, scale=(0.5,1.0)),
+            # transforms.RandomHorizontalFlip(0.5),
+            transforms.CenterCrop((312, 244)),
             transforms.ToTensor(),
+            transforms.Resize((224, 224)),
+            # 244, 244
+            # 312, 244
             transforms.Normalize(mean = [0.485, 0.456, 0.406], std = [0.229, 0.224, 0.225])
         ])
         
