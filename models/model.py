@@ -2,6 +2,22 @@ import torch
 import torch.nn as nn
 import timm
 
+
+# CoAtNet : 
+class coatnet(nn.Module):
+    def __init__(self, num_classes):
+        super(coatnet, self).__init__()
+        self.coatnet = timm.create_model('coat_mini', pretrained=True, num_classes = num_classes,drop_rate=0.5)
+
+        # if freeze == True:
+        #     timm.utils.freeze(self.resnext)
+        #     self.convnext.fc.weight.requires_grad = True
+        #     self.convnext.fc.bias.requires_grad = True
+
+    def forward(self, x):
+        return self.coatnet(x)
+
+
 # ConvNext Base : 224x224
 class convnext(nn.Module):
     def __init__(self, num_classes):

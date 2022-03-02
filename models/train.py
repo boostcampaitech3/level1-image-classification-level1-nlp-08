@@ -8,12 +8,13 @@ import re
 from importlib import import_module
 from pathlib import Path
 import tqdm
+import wandb
 
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from torch.optim.lr_scheduler import StepLR, LambdaLR
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, ConcatDataset
 from torch.utils.tensorboard import SummaryWriter
 
 from dataset import MaskBaseDataset
@@ -102,6 +103,9 @@ def train(data_dir, model_dir, args):
     dataset = dataset_module(
             data_dir=data_dir
             )
+    aug_dataset = dataset_module(
+            data_dir=data_dir
+            )
     # target을 넘겨줘서 label과 num_classes가 변화하도록 구현해야 한다.
     # -- augmentation
     transform_module = getattr(import_module("dataset"), args.augmentation)  # default: BaseAugmentation
@@ -111,6 +115,7 @@ def train(data_dir, model_dir, args):
         magnitude = 9
     )
     dataset.set_transform(transform)
+    aug_dataset.set_transform(dataset.AugTrainTransform)
     print(len(dataset))
     ##############################################################################################
     
@@ -139,6 +144,12 @@ def train(data_dir, model_dir, args):
 
         # -- data_loader
         train_set, val_set = dataset.split_dataset()
+        aug_train_set, aug_val_set = aug_dataset.split_dataset()
+        aug_train_set.indices = train_set.indices
+        #aug_val_set.indices = val_set.indices
+        
+        train_set = ConcatDataset([train_set, aug_train_set])
+        #val_set = ConcatDataset([val_set, aug_val_set])
         
 
         train_loader = DataLoader(
@@ -165,6 +176,7 @@ def train(data_dir, model_dir, args):
             num_classes=num_classes
         ).to(device)
         model = torch.nn.DataParallel(model)
+        wandb.watch(model)
 
         # -- loss & metric
         criterion = create_criterion(args.criterion)  # default: cross_entropy
@@ -232,6 +244,7 @@ def train(data_dir, model_dir, args):
             scheduler.step()    # LR Scheduler Update
 
             # val loop   Validation 시작
+            valid_images = []
             with torch.no_grad():
                 print("Calculating validation results...")
                 model.eval()
@@ -257,6 +270,10 @@ def train(data_dir, model_dir, args):
                     val_loss_items.append(loss_item)
                     val_acc_items.append(acc_item)
 
+                    valid_images.append(
+                        wandb.Image(inputs[0], caption=f'Predicted : {preds[0].item()}, GT : {labels[0]}')
+                    )
+
                     if figure is None:
                         inputs_np = torch.clone(inputs).detach().cpu().permute(0, 2, 3, 1).numpy()
                         inputs_np = dataset_module.denormalize_image(inputs_np, dataset.mean, dataset.std)
@@ -280,7 +297,14 @@ def train(data_dir, model_dir, args):
                 logger.add_scalar("Val/accuracy", val_acc, epoch)
                 logger.add_figure("results", figure, epoch)
                 print()
-
+                
+            wandb.log({f'Train/{target}/Loss' : train_loss,
+                       f'Train/{target}/Accuracy' : train_acc,
+                       f'{target}/Learning Rate' : current_lr,
+                       f'Validation/{target}/Loss' : val_loss,
+                       f'Validation/{target}/Accuracy' : val_acc,
+                       f'Validation/{target}/Images' : valid_images})
+            
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -291,21 +315,21 @@ if __name__ == '__main__':
 
     # Data and model checkpoints directories
     parser.add_argument('--seed', type=int, default=42, help='random seed (default: 42)')
-    parser.add_argument('--epochs', type=int, default=15, help='number of epochs to train (default: 1)')
+    parser.add_argument('--epochs', type=int, default=10, help='number of epochs to train (default: 1)')
     parser.add_argument('--dataset', type=str, default='MaskSplitByProfileDataset', help='dataset augmentation type (default: MaskBaseDataset)')
     parser.add_argument('--augmentation', type=str, default='TrainTransform', help='data augmentation type (default: TrainTransform)')
-    parser.add_argument("--resize", nargs="+", type=list, default=[128, 96], help='resize size for image when training')
-    #parser.add_argument("--resize", nargs="+", type=list, default=[224, 224], help='resize size for image when training')
-    parser.add_argument('--batch_size', type=int, default=64, help='input batch size for training (default: 64)')
+    #parser.add_argument("--resize", nargs="+", type=list, default=[128, 96], help='resize size for image when training')
+    parser.add_argument("--resize", nargs="+", type=list, default=(500, 300), help='resize size for image when training')
+    parser.add_argument('--batch_size', type=int, default=1000, help='input batch size for training (default: 64)')
     parser.add_argument('--valid_batch_size', type=int, default=1000, help='input batch size for validing (default: 1000)')
     
     parser.add_argument('--model', type=str, default='convnext', help='model type (default: BaseModel)')
     
-    parser.add_argument('--optimizer', type=str, default='SGD', help='optimizer type (default: SGD)')
+    parser.add_argument('--optimizer', type=str, default='Adam', help='optimizer type (default: SGD)')
     parser.add_argument('--lr', type=float, default=1e-3, help='learning rate (default: 1e-3)')
     parser.add_argument('--val_ratio', type=float, default=0.2, help='ratio for validaton (default: 0.2)')
-    parser.add_argument('--criterion', type=str, default='cross_entropy', help='criterion type (default: cross_entropy)')
-    parser.add_argument('--lr_decay_step', type=int, default=20, help='learning rate scheduler deacy step (default: 20)')
+    parser.add_argument('--criterion', type=str, default='focal', help='criterion type (default: cross_entropy)')
+    parser.add_argument('--lr_decay_step', type=int, default=3, help='learning rate scheduler deacy step (default: 20)')
     parser.add_argument('--log_interval', type=int, default=20, help='how many batches to wait before logging training status')
     parser.add_argument('--name', default='exp', help='model save at {SM_MODEL_DIR}/{name}')
 
@@ -315,6 +339,9 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     print(args)
+
+    wandb.init(project='ConvNext-No Augmentation', entity='boostcamp-level1-nlp-08', name='chi0-ColorJitter')
+    wandb.config.update(args)
 
     data_dir = args.data_dir
     model_dir = args.model_dir

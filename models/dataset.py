@@ -24,11 +24,40 @@ IMG_EXTENSIONS = [
 def is_image_file(filename):
     return any(filename.endswith(extension) for extension in IMG_EXTENSIONS)
 
+class BaseAugmentation:
+    def __init__(self, resize, mean, std, **args):
+        self.transform = transforms.Compose([
+            Resize(resize, Image.BILINEAR),
+            ToTensor(),
+            Normalize(mean=mean, std=std),
+        ])
+
+    def __call__(self, image):
+        return self.transform(image)
+
+class AddGaussianNoise(object):
+    """
+        transform 에 없는 기능들은 이런식으로 __init__, __call__, __repr__ 부분을
+        직접 구현하여 사용할 수 있습니다.
+    """
+
+    def __init__(self, mean=0.1, std=0.1):
+        self.std = std
+        self.mean = mean
+
+    def __call__(self, tensor):
+        return tensor + torch.randn(tensor.size()) * self.std + self.mean
+
+    def __repr__(self):
+        return self.__class__.__name__ + '(mean={0}, std={1})'.format(self.mean, self.std)
+
 
 class EvalTransform():
     def __init__(self, resize):
         self.transform = transforms.Compose([
-            transforms.Resize(resize),
+            #transforms.Resize(resize),
+            #transforms.RandomResizedCrop(resize, scale=(0.5,1.0)),
+            transforms.CenterCrop(resize),
             transforms.ToTensor(),
             transforms.Normalize(mean = [0.485, 0.456, 0.406], std = [0.229, 0.224, 0.225])
         ])
@@ -36,15 +65,27 @@ class EvalTransform():
     def __call__(self, img):
         return self.transform(img)
 
-
+# mean=(0.548, 0.504, 0.479), std=(0.237, 0.247, 0.246)
 class TrainTransform():
     def __init__(self, n, magnitude, resize):
         self.transform = transforms.Compose([
-            #RandAugment(n = n, m = magnitude),
-            transforms.RandomResizedCrop(resize, scale=(0.5,1.0)),
-            transforms.RandomHorizontalFlip(0.5),
+            transforms.CenterCrop(resize),
             transforms.ToTensor(),
-            transforms.Normalize(mean = [0.485, 0.456, 0.406], std = [0.229, 0.224, 0.225])
+            transforms.Normalize(mean=(0.548, 0.504, 0.479), std=(0.237, 0.247, 0.246))
+        ])
+        
+    def __call__(self, img):
+        return self.transform(img)
+
+
+class AugTrainTransform():
+    def __init__(self, n, magnitude, resize):
+        self.transform = transforms.Compose([
+            transforms.CenterCrop(resize),
+            transforms.ColorJitter(brightness=(0.8,1.4), contrast=(0.6,1.5), saturation=(0.5,2.5), hue=(-0.05,0.05)),
+            #AddGaussianNoise(0.1, 0.1),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=(0.548, 0.504, 0.479), std=(0.237, 0.247, 0.246))
         ])
         
     def __call__(self, img):
@@ -447,9 +488,10 @@ class TestDataset(Dataset):
     def __init__(self, img_paths, resize, mean=(0.548, 0.504, 0.479), std=(0.237, 0.247, 0.246)):
         self.img_paths = img_paths
         self.transform = transforms.Compose([
-            Resize(resize, Image.BILINEAR),
-            ToTensor(),
-            Normalize(mean=mean, std=std),
+            #Resize(resize, Image.BILINEAR),
+            transforms.CenterCrop(resize),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=(0.548, 0.504, 0.479), std=(0.237, 0.247, 0.246))
         ])
 
     def __getitem__(self, index):
