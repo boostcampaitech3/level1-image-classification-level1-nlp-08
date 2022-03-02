@@ -17,7 +17,7 @@ from torch.optim.lr_scheduler import StepLR, LambdaLR
 from torch.utils.data import DataLoader, ConcatDataset
 from torch.utils.tensorboard import SummaryWriter
 
-from dataset import MaskBaseDataset
+from dataset import MaskBaseDataset, AugTrainTransform, TrainTransform
 from loss import create_criterion
 
 
@@ -115,7 +115,7 @@ def train(data_dir, model_dir, args):
         magnitude = 9
     )
     dataset.set_transform(transform)
-    aug_dataset.set_transform(dataset.AugTrainTransform)
+    aug_dataset.set_transform(AugTrainTransform(resize=args.resize))
     print(len(dataset))
     ##############################################################################################
     
@@ -319,9 +319,9 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', type=str, default='MaskSplitByProfileDataset', help='dataset augmentation type (default: MaskBaseDataset)')
     parser.add_argument('--augmentation', type=str, default='TrainTransform', help='data augmentation type (default: TrainTransform)')
     #parser.add_argument("--resize", nargs="+", type=list, default=[128, 96], help='resize size for image when training')
-    parser.add_argument("--resize", nargs="+", type=list, default=(500, 300), help='resize size for image when training')
-    parser.add_argument('--batch_size', type=int, default=1000, help='input batch size for training (default: 64)')
-    parser.add_argument('--valid_batch_size', type=int, default=1000, help='input batch size for validing (default: 1000)')
+    parser.add_argument("--resize", nargs="+", type=list, default=(300, 300), help='resize size for image when training')
+    parser.add_argument('--batch_size', type=int, default=200, help='input batch size for training (default: 64)')
+    parser.add_argument('--valid_batch_size', type=int, default=200, help='input batch size for validing (default: 1000)')
     
     parser.add_argument('--model', type=str, default='convnext', help='model type (default: BaseModel)')
     

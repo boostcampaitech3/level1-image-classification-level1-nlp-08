@@ -7,7 +7,7 @@ import timm
 class coatnet(nn.Module):
     def __init__(self, num_classes):
         super(coatnet, self).__init__()
-        self.coatnet = timm.create_model('coat_mini', pretrained=True, num_classes = num_classes,drop_rate=0.5)
+        self.coatnet = timm.create_model('coat_mini', img_size=500, pretrained=True, num_classes = num_classes,drop_rate=0.5)
 
         # if freeze == True:
         #     timm.utils.freeze(self.resnext)
