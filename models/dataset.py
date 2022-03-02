@@ -82,9 +82,9 @@ class AugTrainTransform():
     def __init__(self, n, magnitude, resize):
         self.transform = transforms.Compose([
             transforms.CenterCrop(resize),
-            transforms.ColorJitter(brightness=(0.8,1.4), contrast=(0.6,1.5), saturation=(0.5,2.5), hue=(-0.05,0.05)),
-            #AddGaussianNoise(0.1, 0.1),
+            #transforms.ColorJitter(brightness=(0.8,1.4), contrast=(0.6,1.5), saturation=(0.5,2.5), hue=(-0.05,0.05)),
             transforms.ToTensor(),
+            AddGaussianNoise(0.1, 0.1),
             transforms.Normalize(mean=(0.548, 0.504, 0.479), std=(0.237, 0.247, 0.246))
         ])
         
