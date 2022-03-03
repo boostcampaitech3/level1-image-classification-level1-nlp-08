@@ -1,11 +1,13 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-
+from fastai import *
+from fastai.vision import *
+from fastai.layers import CrossEntropyFlat
+from torchvision import transforms
 
 class FCLSLoss(nn.Module):    #Focal + Labelsmoothing
-    def __init__(self, classes=3, smoothing=0.0,gamma=2, dim=-1):
+    def __init__(self, classes=3, smoothing=0.1,gamma=2, dim=-1):
         super(FCLSLoss, self).__init__()
         self.confidence = 1.0 - smoothing
         self.smoothing = smoothing
@@ -26,16 +28,14 @@ class FCLSLoss(nn.Module):    #Focal + Labelsmoothing
         Focal_prob = ((1 - prob) ** self.gamma) * log_prob
         return torch.mean(torch.sum(-true_dist*Focal_prob, dim=self.dim))
 
-
 # https://discuss.pytorch.org/t/is-this-a-correct-implementation-for-focal-loss-in-pytorch/43327/8
 class FocalLoss(nn.Module):
     def __init__(self, weight=None,
-                 gamma=2., classes=3, reduction='mean'):
+                 gamma=2., reduction='mean'):
         nn.Module.__init__(self)
         self.weight = weight
         self.gamma = gamma
         self.reduction = reduction
-        self.classes = classes
 
     def forward(self, input_tensor, target_tensor):
         log_prob = F.log_softmax(input_tensor, dim=-1)
@@ -90,7 +90,38 @@ class F1Loss(nn.Module):
         return 1 - f1.mean()
 
 
+
+
+
+
+class MultiTaskLossWrapper(nn.Module):
+    def __init__(self, task_num):
+        super(MultiTaskLossWrapper, self).__init__()
+        self.task_num = task_num
+        self.log_vars = nn.Parameter(torch.zeros((task_num)))
+
+    def forward(self, preds, age, gender, mask):
+
+        crossEntropy = CrossEntropyFlat()
+
+        loss0 = crossEntropy(preds[0], age)
+        loss1 = crossEntropy(preds[1], gender)
+        loss2 = crossEntropy(preds[2], mask)
+
+        precision0 = torch.exp(-self.log_vars[0])
+        loss0 = precision0*loss0 + self.log_vars[0]
+
+        precision1 = torch.exp(-self.log_vars[1])
+        loss1 = precision1*loss1 + self.log_vars[1]
+
+        precision2 = torch.exp(-self.log_vars[2])
+        loss2 = precision2*loss2 + self.log_vars[2]
+        
+        return loss0+loss1+loss2
+
+
 _criterion_entrypoints = {
+    'MultiTaskLossWrapper' : MultiTaskLossWrapper,
     'FCLS': FCLSLoss,
     'cross_entropy': nn.CrossEntropyLoss,
     'focal': FocalLoss,
@@ -107,10 +138,3 @@ def is_criterion(criterion_name):
     return criterion_name in _criterion_entrypoints
 
 
-def create_criterion(criterion_name, **kwargs):
-    if is_criterion(criterion_name):
-        create_fn = criterion_entrypoint(criterion_name)
-        criterion = create_fn(**kwargs)
-    else:
-        raise RuntimeError('Unknown loss (%s)' % criterion_name)
-    return criterion
