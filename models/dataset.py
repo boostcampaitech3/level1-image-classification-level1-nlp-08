@@ -8,37 +8,33 @@ from fastai.vision import *
 import numpy as np
 import torch
 from PIL import Image
-from torch.utils.data import Dataset, Subset, random_split
+from torch.utils.data import Dataset, Subset
 from torchvision import transforms
 from torchvision.transforms import *
 
-from augmentation import RandAugment
 
 import argparse
 import glob
 import json
 import multiprocessing
 import os
-import random
 import re
 from importlib import import_module
 from pathlib import Path
 import tqdm
 from torchvision.models import resnet34 as resnet
 import matplotlib.pyplot as plt
-import numpy as np
-import torch
+
 from torch.optim.lr_scheduler import StepLR, LambdaLR
 from torch.utils.data import DataLoader, ConcatDataset
 from torch.utils.tensorboard import SummaryWriter
 from model import MultiTaskModel
-from fastai import *
-from fastai.vision import *
+
 from torchvision import transforms
 from torch import nn
 from loss import MultiTaskLossWrapper
-import PIL 
 
+from torch.utils.data import random_split as rs
 IMG_EXTENSIONS = [
     ".jpg", ".JPG", ".jpeg", ".JPEG", ".png",
     ".PNG", ".ppm", ".PPM", ".bmp", ".BMP",
@@ -81,7 +77,7 @@ class AddGaussianNoise(object):
 class EvalTransform():
     def __init__(self, resize):
         self.transform = transforms.Compose([
-            #transforms.Resize(resize),
+            transforms.Resize(resize),
             #transforms.RandomResizedCrop(resize, scale=(0.5,1.0)),
             transforms.CenterCrop(resize),
             transforms.ToTensor(),
@@ -96,7 +92,7 @@ class TrainTransform():
     def __init__(self, n, magnitude, resize):
         self.transform = transforms.Compose([
             transforms.CenterCrop((500,300)),
-            #transforms.Resize(resize),
+            transforms.Resize(resize),
             transforms.ToTensor(),
             transforms.Normalize(mean=(0.548, 0.504, 0.479), std=(0.237, 0.247, 0.246))
         ])
@@ -248,7 +244,6 @@ class MaskBaseDataset(Dataset):
         gender_label = self.get_gender_label(index)
         age_label = self.get_age_label(index)
         multi_class_label = self.encode_multi_class(mask_label, gender_label, age_label)
-        self.transform=get_transform()[0]
         image_transform = self.transform(image)
         
         
@@ -299,7 +294,7 @@ class MaskBaseDataset(Dataset):
         """
         n_val = int(len(self) * self.val_ratio)
         n_train = len(self) - n_val
-        train_set, val_set = random_split(self, [n_train, n_val])
+        train_set, val_set = rs(self, [n_train, n_val])
         return train_set, val_set
 
 

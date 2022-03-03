@@ -278,6 +278,7 @@ def train(data_dir, model_dir, args):
     cnt=0
     for img_path in img_paths :
         img = PIL.Image.open(img_path)
+        #print(learn.predict(img))
         age,gender,mask = ageneth_predictor.predict(img)
         total=age+gender+mask
         preds.append(total)
