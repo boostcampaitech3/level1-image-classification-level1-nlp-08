@@ -12,10 +12,9 @@
   - F1 score: 0.6779 / test accuracy: 72.5238
   - Provisional standing: 48th
 - Test dataset for private dataset
-  - F1 score: 0.6671 / test accuracy: 73.3333\
+  - F1 score: 0.6671 / test accuracy: 73.3333
   - Provisional standing: 48th
 
-Final standing: 26th
 ## 사용모델
 - Age, Gender - Convnext
   - learning rate : 0.0005, loss : FCLS(gamma 2, labelsmoothing 0.1), Lr decay : 1 l optimizer : AdamW, Reszie : 224 x 224, Scheduler : Lambda(gender = StepLR) l dropout : 0.5, val batch 200
